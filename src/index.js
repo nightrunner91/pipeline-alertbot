@@ -24,8 +24,10 @@ const app = createServer(bot, config);
 // Start Bot and Server
 async function start() {
     try {
-        bot.launch();
-        logInfo('Telegram bot started');
+        bot.launch().catch(err => {
+            logError('Telegram polling failed (likely another instance is running)', err);
+        });
+        logInfo('Telegram bot started (polling for commands)');
 
         app.listen(config.port, () => {
             logInfo(`Webhook server listening on port ${config.port}`);

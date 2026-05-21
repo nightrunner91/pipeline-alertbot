@@ -29,7 +29,7 @@ async function start() {
         });
         logInfo('Telegram bot started (polling for commands)');
 
-        app.listen(config.port, () => {
+        app.listen(config.port, '0.0.0.0', () => {
             logInfo(`Webhook server listening on port ${config.port}`);
         });
 

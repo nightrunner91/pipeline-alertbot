@@ -7,7 +7,9 @@ function createServer(bot, config) {
     const app = express();
     app.use(express.json());
 
-        app.post('/api/webhook/gitlab', async (req, res) => {
+    app.get('/', (req, res) => res.status(200).send('Pipeline Alertbot is running!'));
+
+    app.post('/api/webhook/gitlab', async (req, res) => {
         try {
             logInfo('Received webhook request from GitLab');
 

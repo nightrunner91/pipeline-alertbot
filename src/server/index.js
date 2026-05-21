@@ -7,11 +7,33 @@ function createServer(bot, config) {
     const app = express();
     app.use(express.json());
 
-    app.get('/', (req, res) => res.status(200).send('Pipeline Alertbot is running!'));
+    app.get('/', (req, res) => {
+        const diagnostics = {
+            status: 'running',
+            env: {
+                PORT: config.port,
+                HAS_TELEGRAM_BOT_TOKEN: !!config.botToken,
+                HAS_TELEGRAM_GROUP_ID: !!config.groupId,
+                HAS_GITLAB_WEBHOOK_SECRET: !!config.gitlabSecret,
+            },
+            botInitialized: !!bot
+        };
+        res.status(200).json(diagnostics);
+    });
 
     app.post('/api/webhook/gitlab', async (req, res) => {
         try {
             logInfo('Received webhook request from GitLab');
+
+            // Fail-safe validation for initialization
+            if (!bot) {
+                logError('Webhook processing failed: Telegram bot is not initialized (missing token)');
+                return res.status(500).send('Telegram bot is not initialized (missing token)');
+            }
+            if (!config.groupId) {
+                logError('Webhook processing failed: TELEGRAM_GROUP_ID is missing');
+                return res.status(500).send('TELEGRAM_GROUP_ID is missing');
+            }
 
             // Validate Secret Token
             const gitlabToken = req.headers['x-gitlab-token'];

@@ -23,13 +23,22 @@ const config = {
     port: parsedPort
 };
 
-if (!config.botToken || !config.groupId) {
-    logError('Missing required environment variables (TELEGRAM_BOT_TOKEN or TELEGRAM_GROUP_ID)');
-    process.exit(1);
+// Initialize Bot only if token is present
+let bot = null;
+if (config.botToken) {
+    try {
+        bot = createBot(config.botToken);
+        logInfo('Telegram bot initialized successfully');
+    } catch (err) {
+        logError('Failed to initialize Telegram bot', err);
+    }
+} else {
+    logError('TELEGRAM_BOT_TOKEN is missing. Bot functionality will be disabled.');
 }
 
-// Initialize Bot
-const bot = createBot(config.botToken);
+if (!config.groupId) {
+    logError('TELEGRAM_GROUP_ID is missing. Notifications cannot be sent.');
+}
 
 // Initialize Web Server
 const app = createServer(bot, config);
@@ -37,7 +46,7 @@ const app = createServer(bot, config);
 // Start Server
 async function start() {
     try {
-        logInfo('Telegram bot initialized (polling disabled)');
+        logInfo('Starting webhook server...');
 
         // Explicitly bind to 0.0.0.0 to satisfy Docker/Railway IPv4 proxy requirements
         app.listen(config.port, '0.0.0.0', () => {

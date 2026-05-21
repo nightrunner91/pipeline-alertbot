@@ -28,7 +28,7 @@ async function start() {
         // We only need the bot to SEND messages, not receive them.
         logInfo('Telegram bot initialized (polling disabled)');
 
-        app.listen(config.port, '0.0.0.0', () => {
+        app.listen(config.port, () => {
             logInfo(`Webhook server listening on port ${config.port}`);
         });
 

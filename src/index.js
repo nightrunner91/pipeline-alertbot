@@ -48,9 +48,19 @@ async function start() {
     try {
         logInfo('Starting webhook server...');
 
-        // Explicitly bind to 0.0.0.0 to satisfy Docker/Railway IPv4 proxy requirements
-        app.listen(config.port, '0.0.0.0', () => {
-            logInfo(`Webhook server listening on 0.0.0.0:${config.port}`);
+        // Bind to config.port and fallback defaults (3000, 8080) to handle any Railway port mapping mismatch
+        const ports = Array.from(new Set([config.port, 3000, 8080].map(Number)));
+        ports.forEach((port) => {
+            const server = app.listen(port, '0.0.0.0', () => {
+                logInfo(`Webhook server listening on 0.0.0.0:${port}`);
+            });
+            server.on('error', (err) => {
+                if (err.code === 'EADDRINUSE') {
+                    logInfo(`Port ${port} is already in use, skipping (this is normal if another server has bound it)`);
+                } else {
+                    logError(`Failed to listen on 0.0.0.0:${port}`, err);
+                }
+            });
         });
 
         // Graceful Shutdown

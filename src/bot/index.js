@@ -18,7 +18,7 @@ function createBot(token) {
 
 async function sendPipelineNotification(bot, chatId, message) {
     try {
-        await bot.telegram.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+        await bot.telegram.sendMessage(chatId, message, { parse_mode: 'HTML', disable_web_page_preview: true });
         logInfo('Notification sent successfully', { chatId });
     } catch (error) {
         logError('Failed to send notification', error, { chatId });

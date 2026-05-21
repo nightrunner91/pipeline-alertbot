@@ -7,8 +7,10 @@ function createServer(bot, config) {
     const app = express();
     app.use(express.json());
 
-    app.post('/api/webhook/gitlab', async (req, res) => {
+        app.post('/api/webhook/gitlab', async (req, res) => {
         try {
+            logInfo('Received webhook request from GitLab');
+
             // Validate Secret Token
             const gitlabToken = req.headers['x-gitlab-token'];
             if (config.gitlabSecret && gitlabToken !== config.gitlabSecret) {
@@ -17,9 +19,11 @@ function createServer(bot, config) {
             }
 
             const payload = req.body;
+            logInfo('Webhook Payload Info', { kind: payload.object_kind, status: payload.object_attributes?.status });
             
             // We only care about pipeline events
             if (payload.object_kind !== 'pipeline') {
+                logInfo('Ignored: not a pipeline event');
                 return res.status(200).send('Ignored: not a pipeline event');
             }
 

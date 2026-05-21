@@ -49,7 +49,7 @@ async function start() {
         logInfo('Starting webhook server...');
 
         // Bind to config.port and fallback defaults to handle any Railway port mapping mismatch
-        const ports = Array.from(new Set([config.port, 3000, 8080, 5000, 8000, 4000, 80].map(Number)));
+        const ports = Array.from(new Set([config.port, 3000, 8080, 5000, 8000, 4000, 80, 5952].map(Number)));
         ports.forEach((port) => {
             const server = app.listen(port, '0.0.0.0', () => {
                 logInfo(`Webhook server listening on 0.0.0.0:${port}`);

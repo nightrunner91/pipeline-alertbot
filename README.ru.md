@@ -1,6 +1,4 @@
-<p align="center">
-  <strong>Pipeline Alertbot</strong>
-</p>
+# <p align="center">Pipeline Alertbot</p>
 
 <p align="center">
   <strong>Уведомления о GitLab CI/CD пайплайнах в Telegram в реальном времени.</strong>

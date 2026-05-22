@@ -48,6 +48,7 @@ function extractData(payload) {
     const triggeredBy = escapeHtml(payload.user?.name || '');
     const pipelineUrl = payload.project?.web_url + '/-/pipelines/' + pipelineId;
     const commitUrl = payload.commit?.url || '';
+    const repoUrl = payload.project?.web_url || '';
 
     return {
         project,
@@ -63,29 +64,25 @@ function extractData(payload) {
         triggeredBy,
         pipelineUrl,
         commitUrl,
+        repoUrl,
         ...getStatusConfig(status),
     };
 }
 
 function formatCardStyle(data) {
-    let msg = `${data.emoji} <b>${data.statusText}</b>\n`;
+    let msg = `${data.emoji} ${data.statusText}\n`;
+    msg += `\n`;
     msg += `<b>${data.project}</b>\n`;
-    msg += `\u200B\n`;
-    msg += `<b>Branch:</b> <code>${data.ref}</code>\n`;
-    msg += `<b>Commit:</b> <a href="${data.commitUrl}">${data.shortSha}</a>\n`;
-    msg += `<b>Author:</b> ${data.author}\n`;
-    if (data.commitMsg) {
-        msg += `<b>Message:</b> <i>${data.commitMsg}</i>\n`;
+    msg += `\n`;
+    msg += `<b>Branch</b> - <code>${data.ref}</code>\n`;
+    msg += `<b>Commit</b> - <code>${data.shortSha}</code>\n`;
+    if (data.stages) {
+        msg += `<b>Stages</b> - <code>${data.stages}</code>\n`;
     }
-    msg += `\u200B\n`;
-    const metaParts = [];
-    if (data.duration) metaParts.push(`\u23F1 ${data.duration}`);
-    if (data.stages) metaParts.push(`<b>Stages:</b> ${data.stages}`);
-    if (metaParts.length) {
-        msg += metaParts.join(' \u00B7 ') + '\n';
+    msg += `<b>Author</b> - <code>${data.author}</code>\n`;
+    if (data.duration && data.status !== 'running') {
+        msg += `<b>Duration</b> - <code>${data.duration}</code>\n`;
     }
-    msg += `\u200B\n`;
-    msg += `<a href="${data.pipelineUrl}">\uD83D\uDD17 Open Pipeline</a>`;
     return msg;
 }
 
@@ -150,12 +147,15 @@ function buildInlineKeyboard(data) {
     const buttons = [];
     const row1 = [];
     if (data.pipelineUrl) {
-        row1.push({ text: '\uD83D\uDD17 Pipeline', url: data.pipelineUrl });
+        row1.push({ text: 'Pipeline', url: data.pipelineUrl });
     }
     if (data.commitUrl) {
-        row1.push({ text: '\uD83D\uDCDD Commit', url: data.commitUrl });
+        row1.push({ text: 'Commit', url: data.commitUrl });
     }
     if (row1.length) buttons.push(row1);
+    if (data.repoUrl) {
+        buttons.push([{ text: 'View repository', url: data.repoUrl }]);
+    }
     return buttons.length ? { inline_keyboard: buttons } : undefined;
 }
 

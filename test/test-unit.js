@@ -30,7 +30,7 @@ function runUnitTests() {
                 assert(msg.includes('my-awesome-project'), 'Should contain project name');
                 assert(msg.includes('main'), 'Should contain branch name');
                 assert(msg.includes('John Doe'), 'Should contain author name');
-                assert(msg.includes('Open Pipeline'), 'Should contain pipeline link text');
+                assert(!msg.includes('Duration'), 'Should not contain duration for running');
             },
         },
         {
@@ -103,8 +103,6 @@ function runUnitTests() {
             assertions: (msg) => {
                 assert(msg.includes('<b>'), 'Should contain bold tags');
                 assert(msg.includes('<code>'), 'Should contain code tags');
-                assert(msg.includes('<i>'), 'Should contain italic tags');
-                assert(msg.includes('<a href='), 'Should contain link tags');
             },
         },
         {
@@ -114,8 +112,12 @@ function runUnitTests() {
             assertions: (msg, reply_markup) => {
                 assert(reply_markup, 'Should have reply_markup');
                 assert(reply_markup.inline_keyboard, 'Should have inline_keyboard');
-                assert(reply_markup.inline_keyboard.length > 0, 'Should have at least one row');
-                assert(reply_markup.inline_keyboard[0].length >= 1, 'Should have at least one button');
+                assert(reply_markup.inline_keyboard.length === 2, 'Should have two rows');
+                assert(reply_markup.inline_keyboard[0].length >= 1, 'Should have at least one button in first row');
+                assert(reply_markup.inline_keyboard[0][0].text === 'Pipeline', 'First button should be "Pipeline"');
+                assert(reply_markup.inline_keyboard[0][1].text === 'Commit', 'Second button should be "Commit"');
+                assert(reply_markup.inline_keyboard[1].length === 1, 'Second row should have one button');
+                assert(reply_markup.inline_keyboard[1][0].text === 'View repository', 'Third button should be "View repository"');
             },
             withKeyboard: true,
         },

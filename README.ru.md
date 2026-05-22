@@ -1,13 +1,23 @@
-# Pipeline Alertbot
+<p align="center">
+  <strong>Pipeline Alertbot</strong>
+</p>
 
-> Уведомления о GitLab CI/CD пайплайнах в Telegram в реальном времени.
+<p align="center">
+  <strong>Уведомления о GitLab CI/CD пайплайнах в Telegram в реальном времени.</strong>
+</p>
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![License](https://img.shields.io/badge/license-ISC-green.svg)
-![Node.js](https://img.shields.io/badge/node.js-%3E%3D18-43853D?style=flat&logo=node.js&logoColor=white)
-![Express](https://img.shields.io/badge/Express-000000?style=flat&logo=express&logoColor=white)
-![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=flat&logo=telegram&logoColor=white)
-![GitLab](https://img.shields.io/badge/GitLab-FC6D26?style=flat&logo=gitlab&logoColor=white)
+<p align="center">
+  <strong><img src="https://flagcdn.com/w20/ru.png" width="20"> Russian</strong> | <a href="README.md"><img src="https://flagcdn.com/w20/us.png" width="20"> English</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Version-1.0.0-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/License-ISC-green?style=for-the-badge" alt="License">
+  <img src="https://img.shields.io/badge/Node.js-%3E%3D18-6da55f?style=for-the-badge&logo=node.js" alt="Node Version">
+  <img src="https://img.shields.io/badge/Express-5.2.1-000000?style=for-the-badge&logo=express" alt="Express">
+  <img src="https://img.shields.io/badge/Telegraf-4.16.3-2CA5E0?style=for-the-badge&logo=telegram" alt="Telegraf">
+  <img src="https://img.shields.io/badge/GitLab-FC6D26?style=for-the-badge&logo=gitlab" alt="GitLab">
+</p>
 
 ## Содержание
 

@@ -299,3 +299,9 @@ The application uses structured JSON logging via `src/utils/logger.js`. All log 
 ## License
 
 This project is licensed under the [ISC License](LICENSE).
+
+---
+
+<p align="center">
+  Built with ❤ by <a href="https://t.me/nightrunner91">nightrunner91</a>
+</p>

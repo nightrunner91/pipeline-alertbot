@@ -299,3 +299,9 @@ npm test
 ## Лицензия
 
 Этот проект распространяется под лицензией [ISC](LICENSE).
+
+---
+
+<p align="center">
+  Сделано c ❤ <a href="https://t.me/nightrunner91">nightrunner91</a>
+</p>

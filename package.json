@@ -4,7 +4,10 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run test:unit && npm run test:webhooks && npm run test:security",
+    "test:unit": "node test/test-unit.js",
+    "test:webhooks": "node test/test-webhooks.js",
+    "test:security": "node test/test-security.js"
   },
   "keywords": [],
   "author": "",

@@ -1,6 +1,6 @@
 const express = require('express');
 const { logInfo, logError } = require('../utils/logger');
-const { formatPipelineMessage } = require('../services/gitlab');
+const { formatPipelineMessageWithKeyboard } = require('../services/gitlab');
 const { sendPipelineNotification } = require('../bot');
 
 function createServer(bot, config) {
@@ -15,6 +15,7 @@ function createServer(bot, config) {
                 HAS_TELEGRAM_BOT_TOKEN: !!config.botToken,
                 HAS_TELEGRAM_GROUP_ID: !!config.groupId,
                 HAS_GITLAB_WEBHOOK_SECRET: !!config.gitlabSecret,
+                ALERT_STYLE: config.alertStyle || 'card',
             },
             botInitialized: !!bot
         };
@@ -54,8 +55,8 @@ function createServer(bot, config) {
             const status = payload.object_attributes?.status;
             // Only alert on specific statuses
             if (['running', 'success', 'failed', 'canceled'].includes(status)) {
-                const message = formatPipelineMessage(payload);
-                await sendPipelineNotification(bot, config.groupId, message);
+                const { message, reply_markup } = formatPipelineMessageWithKeyboard(payload, config.alertStyle);
+                await sendPipelineNotification(bot, config.groupId, message, reply_markup);
             }
 
             res.status(200).send('OK');

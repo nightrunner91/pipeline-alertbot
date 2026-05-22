@@ -20,7 +20,8 @@ const config = {
     botToken: process.env.TELEGRAM_BOT_TOKEN,
     groupId: process.env.TELEGRAM_GROUP_ID,
     gitlabSecret: process.env.GITLAB_WEBHOOK_SECRET,
-    port: parsedPort
+    port: parsedPort,
+    alertStyle: process.env.ALERT_STYLE || 'card',
 };
 
 // Initialize Bot only if token is present

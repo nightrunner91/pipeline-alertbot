@@ -16,9 +16,16 @@ function createBot(token) {
     return bot;
 }
 
-async function sendPipelineNotification(bot, chatId, message) {
+async function sendPipelineNotification(bot, chatId, message, reply_markup) {
     try {
-        await bot.telegram.sendMessage(chatId, message, { parse_mode: 'HTML', disable_web_page_preview: true });
+        const options = {
+            parse_mode: 'HTML',
+            disable_web_page_preview: true,
+        };
+        if (reply_markup) {
+            options.reply_markup = reply_markup;
+        }
+        await bot.telegram.sendMessage(chatId, message, options);
         logInfo('Notification sent successfully', { chatId });
     } catch (error) {
         logError('Failed to send notification', error, { chatId });

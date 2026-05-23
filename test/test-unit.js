@@ -147,6 +147,16 @@ function runUnitTests() {
                 assert(formatStages(null) === null, 'null should return null');
             },
         },
+        {
+            name: 'projectName override replaces project name in message',
+            fixture: 'pipeline-running.json',
+            style: 'card',
+            assertions: (msg) => {
+                assert(msg.includes('Custom Project Name'), 'Should contain custom project name');
+                assert(!msg.includes('my-awesome-project'), 'Should not contain original project name');
+            },
+            projectNameOverride: 'Custom Project Name',
+        },
     ];
 
     for (const test of tests) {
@@ -164,10 +174,10 @@ function runUnitTests() {
             const payload = JSON.parse(fs.readFileSync(fixturePath, 'utf-8'));
 
             if (test.withKeyboard) {
-                const { message, reply_markup } = formatPipelineMessageWithKeyboard(payload, test.style);
+                const { message, reply_markup } = formatPipelineMessageWithKeyboard(payload, test.style, test.projectNameOverride);
                 test.assertions(message, reply_markup);
             } else {
-                const message = formatPipelineMessage(payload, test.style);
+                const message = formatPipelineMessage(payload, test.style, test.projectNameOverride);
                 test.assertions(message);
             }
 

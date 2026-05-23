@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { createBot } = require('./bot');
 const { createServer } = require('./server');
+const { parseRepositoryConfig } = require('./utils/repo-config');
 const { logInfo, logError } = require('./utils/logger');
 
 // Global Error Handlers to prevent silent fatal crashes
@@ -22,7 +23,18 @@ const config = {
     gitlabSecret: process.env.GITLAB_WEBHOOK_SECRET,
     port: parsedPort,
     alertStyle: process.env.ALERT_STYLE || 'card',
+    repositoryConfig: process.env.REPOSITORY_CONFIG || null,
 };
+
+// Parse repository mapping (multi-repo support)
+const repositories = parseRepositoryConfig(
+    config.repositoryConfig,
+    config.groupId,
+    config.gitlabSecret,
+    config.alertStyle
+);
+
+logInfo(`Loaded ${repositories.size} repository configuration(s)`);
 
 // Initialize Bot only if token is present
 let bot = null;
@@ -37,12 +49,8 @@ if (config.botToken) {
     logError('TELEGRAM_BOT_TOKEN is missing. Bot functionality will be disabled.');
 }
 
-if (!config.groupId) {
-    logError('TELEGRAM_GROUP_ID is missing. Notifications cannot be sent.');
-}
-
 // Initialize Web Server
-const app = createServer(bot, config);
+const app = createServer(bot, config, repositories);
 
 // Start Server
 async function start() {

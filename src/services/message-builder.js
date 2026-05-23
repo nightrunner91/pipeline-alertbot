@@ -13,7 +13,7 @@ function formatDuration(seconds) {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     if (m === 0) return `${s}s`;
-    return `${m}m ${s}s`;
+    return `${m}m:${s}s`;
 }
 
 function formatStages(stages) {
@@ -33,8 +33,8 @@ function getStatusConfig(status) {
     return configs[status] || { emoji: '\uD83D\uDCCB', statusText: status || 'Unknown', badge: status || 'UNKNOWN' };
 }
 
-function extractData(payload) {
-    const project = escapeHtml(payload.project?.name || 'Unknown Project');
+function extractData(payload, projectNameOverride) {
+    const project = escapeHtml(projectNameOverride || payload.project?.name || 'Unknown Project');
     const namespace = escapeHtml(payload.project?.namespace || '');
     const status = payload.object_attributes?.status;
     const ref = escapeHtml(payload.object_attributes?.ref || 'unknown');
@@ -130,8 +130,8 @@ function formatMinimalStyle(data) {
     return msg;
 }
 
-function buildMessage(payload, style = 'card') {
-    const data = extractData(payload);
+function buildMessage(payload, style = 'card', projectNameOverride) {
+    const data = extractData(payload, projectNameOverride);
     switch (style) {
         case 'badge':
             return formatBadgeStyle(data);
@@ -159,9 +159,9 @@ function buildInlineKeyboard(data) {
     return buttons.length ? { inline_keyboard: buttons } : undefined;
 }
 
-function buildMessageWithKeyboard(payload, style = 'card') {
-    const data = extractData(payload);
-    const message = buildMessage(payload, style);
+function buildMessageWithKeyboard(payload, style = 'card', projectNameOverride) {
+    const data = extractData(payload, projectNameOverride);
+    const message = buildMessage(payload, style, projectNameOverride);
     const reply_markup = buildInlineKeyboard(data);
     return { message, reply_markup };
 }

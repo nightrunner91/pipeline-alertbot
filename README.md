@@ -29,6 +29,7 @@
   - [Quick Start](#quick-start)
 - [Configuration](#configuration)
   - [Environment Variables](#environment-variables)
+  - [Multi-Repository Mode](#multi-repository-mode)
   - [Alert Styles](#alert-styles)
   - [GitLab Webhook Setup](#gitlab-webhook-setup)
   - [Railway Deployment](#railway-deployment)
@@ -42,16 +43,18 @@
 
 ## Project Overview
 
-**Pipeline Alertbot** is a lightweight, production-ready webhook relay that bridges GitLab CI/CD pipeline events to Telegram group chats. It receives pipeline webhooks from GitLab, formats them into readable notifications, and sends them to a designated Telegram chat in real time.
+**Pipeline Alertbot** is a lightweight, production-ready webhook relay that bridges GitLab CI/CD pipeline events to Telegram group chats. It receives pipeline webhooks from GitLab, formats them into readable notifications, and sends them to designated Telegram chats in real time.
 
-The bot is designed for teams that want immediate visibility into their CI/CD pipelines without leaving Telegram. It supports multiple notification styles, secure webhook validation, and deploys seamlessly to platforms like Railway.
+The bot supports **multi-repository mode**, allowing you to monitor multiple GitLab projects and route alerts to different Telegram groups. Each repository can have its own custom display name, alert style, and webhook secret. It deploys seamlessly to platforms like Railway.
 
 ## Features
 
+- **Multi-repository support** -- Monitor many GitLab projects and route alerts to different Telegram chats
+- **Custom project names** -- Override GitLab project names with your own display names in alerts
+- **Per-repo alert styles** -- Each repository can use a different notification format (card, badge, or minimal)
 - **Real-time pipeline alerts** -- Receive instant notifications for running, successful, failed, and canceled pipelines
-- **Three notification styles** -- Choose between card, badge, or minimal message formats via `ALERT_STYLE`
 - **Inline keyboard buttons** -- Quick-access links to the pipeline, commit, and repository directly in Telegram
-- **Secure webhook validation** -- Validates incoming requests using GitLab's secret token header
+- **Secure webhook validation** -- Validates incoming requests using per-repository secret tokens
 - **Multi-port binding** -- Automatically binds to multiple ports for compatibility with Railway's dynamic port routing
 - **Graceful error handling** -- Global uncaught exception and unhandled rejection handlers prevent silent crashes
 - **Diagnostics endpoint** -- Health check endpoint that reports configuration status without exposing secrets
@@ -75,12 +78,13 @@ pipeline-alertbot/
 │   ├── bot/
 │   │   └── index.js          # Telegraf bot creation and message dispatch
 │   ├── server/
-│   │   └── index.js          # Express server: routes, webhook validation, payload handling
+│   │   └── index.js          # Express server: routes, webhook validation, payload routing
 │   ├── services/
 │   │   ├── gitlab.js         # GitLab payload formatting entry point
 │   │   └── message-builder.js # Message templates (card, badge, minimal) and HTML escaping
 │   └── utils/
-│       └── logger.js         # Structured JSON logging (INFO/ERROR)
+│       ├── logger.js         # Structured JSON logging (INFO/ERROR)
+│       └── repo-config.js    # Multi-repository config parser and routing logic
 ├── test/
 │   ├── fixtures/             # Sample GitLab webhook payloads
 │   │   ├── pipeline-running.json
@@ -88,12 +92,13 @@ pipeline-alertbot/
 │   │   ├── pipeline-failed.json
 │   │   └── pipeline-canceled.json
 │   ├── test-unit.js          # Unit tests for message formatting
+│   ├── test-repo-config.js   # Multi-repository config tests
 │   ├── test-webhooks.js      # Webhook integration tests
 │   └── test-security.js      # Security validation tests
 ├── index.js                  # Root entry point (re-exports src/index.js)
 ├── railway.json              # Railway deployment configuration
 ├── package.json              # Dependencies and npm scripts
-└── .env.example              # Environment variable template (create your own)
+└── .env                      # Environment variables (not committed)
 ```
 
 ## Getting Started
@@ -103,8 +108,8 @@ pipeline-alertbot/
 - Node.js >= 18
 - npm (bundled with Node.js)
 - A Telegram bot token from [@BotFather](https://t.me/botfather)
-- A Telegram group or channel ID where notifications will be sent
-- A GitLab project with webhook configuration access
+- One or more Telegram group/channel IDs for notifications
+- Access to GitLab project webhook settings
 
 ### Installation
 
@@ -121,7 +126,7 @@ pipeline-alertbot/
    npm install
    ```
 
-3. Create a `.env` file from the template below:
+3. Create a `.env` file:
 
    ```bash
    cp .env.example .env   # or create .env manually
@@ -136,7 +141,7 @@ pipeline-alertbot/
    npm start
    ```
 
-3. Configure a GitLab webhook pointing to your server URL (see [GitLab Webhook Setup](#gitlab-webhook-setup)).
+3. Configure GitLab webhooks pointing to your server URL (see [GitLab Webhook Setup](#gitlab-webhook-setup)).
 4. Trigger a pipeline in GitLab and watch the notification appear in Telegram.
 
 ## Configuration
@@ -148,17 +153,55 @@ Create a `.env` file in the project root with the following variables:
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `TELEGRAM_BOT_TOKEN` | Yes | -- | Bot token obtained from [@BotFather](https://t.me/botfather) |
-| `TELEGRAM_GROUP_ID` | Yes | -- | Target chat ID (e.g., `-1001234567890` for groups) |
-| `GITLAB_WEBHOOK_SECRET` | Yes | -- | Secret token for validating incoming GitLab webhooks |
-| `ALERT_STYLE` | No | `card` | Message format: `card`, `badge`, or `minimal` |
+| `REPOSITORY_CONFIG` | Yes | -- | JSON array mapping GitLab projects to Telegram chats (see below) |
+| `ALERT_STYLE` | No | `card` | Global fallback message format: `card`, `badge`, or `minimal` |
 | `PORT` | No | `3000` | Primary port for the webhook server |
 
 > [!IMPORTANT]
 > Never commit your `.env` file. It is listed in `.gitignore` and should only exist locally or in your deployment platform's secret store.
 
+### Multi-Repository Mode
+
+The `REPOSITORY_CONFIG` variable defines which GitLab projects to monitor and where to send their alerts. It is a JSON array of repository entries:
+
+```json
+[
+  {
+    "projectId": 123,
+    "projectName": "My Awesome API",
+    "chatId": "-1001234567890",
+    "secret": "webhook-secret-for-repo-1",
+    "style": "card"
+  },
+  {
+    "projectId": 456,
+    "projectName": "Frontend App",
+    "chatId": "-1009876543210",
+    "secret": "webhook-secret-for-repo-2",
+    "style": "badge"
+  }
+]
+```
+
+**Fields per repository entry:**
+
+| Field | Required | Description |
+|---|---|---|
+| `projectId` | Yes | GitLab project ID (numeric, found in Settings > General) |
+| `projectName` | No | Custom display name for alerts (overrides GitLab project name) |
+| `chatId` | Yes | Telegram chat/group ID to send alerts to |
+| `secret` | No | Webhook secret token (must match GitLab webhook settings) |
+| `style` | No | Alert style: `card`, `badge`, or `minimal` (falls back to `ALERT_STYLE`) |
+
+In your `.env` file, the JSON must be on a **single line**:
+
+```env
+REPOSITORY_CONFIG=[{"projectId":123,"projectName":"My API","chatId":"-1001234567890","secret":"secret1","style":"card"},{"projectId":456,"projectName":"Frontend","chatId":"-1009876543210","secret":"secret2","style":"badge"}]
+```
+
 ### Alert Styles
 
-The `ALERT_STYLE` variable controls how pipeline notifications appear in Telegram:
+The `style` field (per repo) or `ALERT_STYLE` (global fallback) controls how pipeline notifications appear in Telegram:
 
 | Style | Description | Example Output |
 |---|---|---|
@@ -170,6 +213,8 @@ All styles include an inline keyboard with buttons linking to the pipeline, comm
 
 ### GitLab Webhook Setup
 
+Configure a webhook **for each repository** you want to monitor:
+
 1. Open your GitLab project and navigate to **Settings > Webhooks**.
 2. Set the **URL** to your deployed endpoint:
 
@@ -177,12 +222,14 @@ All styles include an inline keyboard with buttons linking to the pipeline, comm
    https://your-domain.com/api/webhook/gitlab
    ```
 
-3. Set the **Secret token** to the exact value of `GITLAB_WEBHOOK_SECRET` from your `.env` file.
+3. Set the **Secret token** to the `secret` value from the corresponding entry in `REPOSITORY_CONFIG`.
 4. Under **Trigger**, check **Pipeline events**.
 5. Keep **Enable SSL verification** enabled for production deployments.
 6. Click **Add webhook** and test using the **Test > Pipeline events** dropdown.
 
 > [!NOTE]
+> All repositories use the same webhook endpoint. The bot routes alerts to the correct Telegram chat based on the `projectId` in the incoming payload.
+>
 > The bot only processes pipeline events with statuses: `running`, `success`, `failed`, and `canceled`. Other events are acknowledged but ignored.
 
 ### Railway Deployment
@@ -205,7 +252,10 @@ To deploy:
 
 1. Push the repository to GitHub.
 2. Connect the repository in your Railway dashboard.
-3. Add the required environment variables in Railway's variable editor.
+3. Add the required environment variables in Railway's variable editor:
+   - `TELEGRAM_BOT_TOKEN` -- your bot token
+   - `REPOSITORY_CONFIG` -- single-line JSON array of repository mappings
+   - `ALERT_STYLE` -- optional global fallback style
 4. Railway will automatically build and deploy using Nixpacks.
 
 The server binds to multiple ports (`3000`, `8080`, `5000`, `8000`, `4000`, `80`, `5952`) to handle Railway's dynamic port assignment.
@@ -222,6 +272,7 @@ Expected output:
 
 ```json
 {"level":"INFO","timestamp":"2026-05-22T12:00:00.000Z","message":"Telegram bot initialized successfully","context":{}}
+{"level":"INFO","timestamp":"2026-05-22T12:00:00.000Z","message":"Loaded 2 repository configuration(s)","context":{}}
 {"level":"INFO","timestamp":"2026-05-22T12:00:00.000Z","message":"Starting webhook server...","context":{}}
 {"level":"INFO","timestamp":"2026-05-22T12:00:00.000Z","message":"Webhook server listening on 0.0.0.0:3000","context":{}}
 ```
@@ -229,9 +280,9 @@ Expected output:
 ### Webhook Endpoint
 
 - **URL**: `POST /api/webhook/gitlab`
-- **Headers**: `X-Gitlab-Token: <your-secret>`
+- **Headers**: `X-Gitlab-Token: <repo-secret>`
 - **Body**: GitLab pipeline event payload (JSON)
-- **Response**: `200 OK` on success, `401 Unauthorized` if the secret token does not match, `500` if bot or group ID is missing
+- **Response**: `200 OK` on success, `401 Unauthorized` if the secret does not match, `404` if no repository config matches the project, `500` if bot is not initialized
 
 ### Diagnostics Endpoint
 
@@ -244,11 +295,13 @@ Expected output:
   "env": {
     "PORT": 3000,
     "HAS_TELEGRAM_BOT_TOKEN": true,
-    "HAS_TELEGRAM_GROUP_ID": true,
-    "HAS_GITLAB_WEBHOOK_SECRET": true,
+    "HAS_TELEGRAM_GROUP_ID": false,
+    "HAS_GITLAB_WEBHOOK_SECRET": false,
+    "HAS_REPOSITORY_CONFIG": true,
     "ALERT_STYLE": "card"
   },
-  "botInitialized": true
+  "botInitialized": true,
+  "registeredRepositories": 2
 }
 ```
 
@@ -260,11 +313,12 @@ Run the full test suite:
 npm test
 ```
 
-This executes three test suites in sequence:
+This executes four test suites in sequence:
 
 | Script | Description |
 |---|---|
 | `npm run test:unit` | Unit tests for message formatting, duration parsing, and stage formatting |
+| `npm run test:repo-config` | Multi-repository config parsing and routing tests |
 | `npm run test:webhooks` | Webhook integration tests with sample payloads |
 | `npm run test:security` | Security validation tests (token verification, input sanitization) |
 
@@ -279,6 +333,7 @@ Tests use fixture files in `test/fixtures/` that simulate real GitLab pipeline e
 | `npm start` | Start the application |
 | `npm test` | Run all tests |
 | `npm run test:unit` | Run unit tests only |
+| `npm run test:repo-config` | Run repository config tests only |
 | `npm run test:webhooks` | Run webhook tests only |
 | `npm run test:security` | Run security tests only |
 

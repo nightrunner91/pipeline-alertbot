@@ -21,7 +21,7 @@ function runTests() {
             run: () => {
                 const envConfig = JSON.stringify([
                     { projectId: 123, chatId: '-100111', secret: 'secret1', style: 'card' },
-                    { projectId: 456, chatId: '-100222', secret: 'secret2', style: 'badge' },
+                    { projectId: 456, chatId: '-100222', secret: 'secret2', style: 'tree' },
                 ]);
                 const repos = parseRepositoryConfig(envConfig, null, null, 'card');
                 assert(repos.size === 2, `Expected 2 repos, got ${repos.size}`);
@@ -114,12 +114,12 @@ function runTests() {
             name: 'Use repo-specific style',
             run: () => {
                 const envConfig = JSON.stringify([
-                    { projectId: 123, chatId: '-100111', style: 'badge' },
+                    { projectId: 123, chatId: '-100111', style: 'tree' },
                 ]);
                 const repos = parseRepositoryConfig(envConfig, null, null, 'card');
                 const payload = { project: { id: 123 } };
                 const config = findRepoConfig(repos, payload);
-                assert(config.style === 'badge', `Expected style "badge", got "${config.style}"`);
+                assert(config.style === 'tree', `Expected style "tree", got "${config.style}"`);
             },
         },
         {

@@ -86,55 +86,44 @@ function formatCardStyle(data) {
     return msg;
 }
 
-function formatBadgeStyle(data) {
-    let msg = `${data.emoji} <code>${data.badge}</code>\n`;
+function formatTreeStyle(data) {
+    let msg = `${data.emoji} ${data.statusText}\n`;
     msg += `\n`;
     msg += `<b>${data.project}</b>\n`;
     msg += `\u251C\u2500 <b>Branch:</b> <code>${data.ref}</code>\n`;
-    msg += `\u251C\u2500 <b>Commit:</b> <a href="${data.commitUrl}">${data.shortSha}</a>\n`;
-    msg += `\u251C\u2500 <b>Author:</b> ${data.author}\n`;
-    if (data.triggeredBy) {
-        msg += `\u251C\u2500 <b>Triggered by:</b> ${data.triggeredBy}\n`;
+    msg += `\u251C\u2500 <b>Commit:</b> <code>${data.shortSha}</code>\n`;
+    if (data.stages) {
+        msg += `\u251C\u2500 <b>Stages:</b> <code>${data.stages}</code>\n`;
     }
-    msg += `\u251C\u2500 <b>Duration:</b> ${data.duration || 'N/A'}\n`;
-    msg += `\u2514\u2500 <b>Stages:</b> ${data.stages || 'N/A'}\n`;
-    if (data.commitMsg) {
-        msg += `\n<i>${data.commitMsg}</i>\n`;
+    msg += `\u251C\u2500 <b>Author:</b> <code>${data.author}</code>\n`;
+    if (data.duration && data.status !== 'running') {
+        msg += `\u2514\u2500 <b>Duration:</b> <code>${data.duration}</code>\n`;
     }
-    msg += `\n`;
-    msg += `<a href="${data.pipelineUrl}">View in GitLab \u2192</a>`;
     return msg;
 }
 
 function formatMinimalStyle(data) {
-    let msg = `${data.emoji} <b>Pipeline ${data.statusText}</b>\n`;
-    msg += `<i>${data.project}</i>\n`;
+    let msg = `${data.emoji} ${data.statusText}\n`;
     msg += `\n`;
-    let inline = `<code>${data.ref}</code> \u00B7 <a href="${data.commitUrl}">${data.shortSha}</a> \u00B7 ${data.author}`;
-    if (data.triggeredBy) {
-        inline += ` \u00B7 via ${data.triggeredBy}`;
-    }
-    msg += inline + '\n';
-    if (data.commitMsg) {
-        msg += `<i>${data.commitMsg}</i>\n`;
-    }
+    msg += `<b>${data.project}</b>\n`;
     msg += `\n`;
-    const metaParts = [];
-    if (data.duration) metaParts.push(`\u23F1 ${data.duration}`);
-    if (data.stages) metaParts.push(data.stages);
-    if (metaParts.length) {
-        msg += metaParts.join(' \u00B7 ') + '\n';
+    const badges = [
+        `<code>${data.ref}</code>`,
+        `<code>${data.shortSha}</code>`,
+        `<code>${data.author}</code>`,
+    ];
+    if (data.duration && data.status !== 'running') {
+        badges.push(`<code>${data.duration}</code>`);
     }
-    msg += `\n`;
-    msg += `<a href="${data.pipelineUrl}">Open Pipeline</a>`;
+    msg += badges.join(' | ');
     return msg;
 }
 
 function buildMessage(payload, style = 'card', projectNameOverride) {
     const data = extractData(payload, projectNameOverride);
     switch (style) {
-        case 'badge':
-            return formatBadgeStyle(data);
+        case 'tree':
+            return formatTreeStyle(data);
         case 'minimal':
             return formatMinimalStyle(data);
         case 'card':
@@ -174,6 +163,6 @@ module.exports = {
     buildMessage,
     buildMessageWithKeyboard,
     formatCardStyle,
-    formatBadgeStyle,
+    formatTreeStyle,
     formatMinimalStyle,
 };

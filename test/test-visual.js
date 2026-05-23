@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const FIXTURES_DIR = path.join(__dirname, 'fixtures');
-const STYLES = ['card', 'badge', 'minimal'];
+const STYLES = ['card', 'tree', 'minimal'];
 const FIXTURES = ['pipeline-running.json', 'pipeline-success.json', 'pipeline-failed.json', 'pipeline-canceled.json'];
 
 function stripHtml(html) {

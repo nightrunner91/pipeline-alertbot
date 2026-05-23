@@ -49,7 +49,7 @@
 
 - **Multi-repository support** - Monitor many GitLab projects and route alerts to different Telegram chats
 - **Custom project names** - Override GitLab project names with your own display names in alerts
-- **Per-repo alert styles** - Each repository can use a different notification format (card, badge, or minimal)
+- **Per-repo alert styles** - Each repository can use a different notification format (card, tree, or minimal)
 - **Real-time pipeline alerts** - Receive instant notifications for running, successful, failed, and canceled pipelines
 - **Inline keyboard buttons** - Quick-access links to the pipeline, commit, and repository directly in Telegram
 - **Secure webhook validation** - Validates incoming requests using per-repository secret tokens
@@ -79,7 +79,7 @@ pipeline-alertbot/
 │   │   └── index.js          # Express server: routes, webhook validation, payload routing
 │   ├── services/
 │   │   ├── gitlab.js         # GitLab payload formatting entry point
-│   │   └── message-builder.js # Message templates (card, badge, minimal) and HTML escaping
+│   │   └── message-builder.js # Message templates (card, tree, minimal) and HTML escaping
 │   └── utils/
 │       ├── logger.js         # Structured JSON logging (INFO/ERROR)
 │       └── repo-config.js    # Multi-repository config parser and routing logic
@@ -151,7 +151,7 @@ Create a `.env` file in the project root with the following variables:
 |---|---|---|---|
 | `TELEGRAM_BOT_TOKEN` | Yes | -- | Bot token obtained from [@BotFather](https://t.me/botfather) |
 | `REPOSITORY_CONFIG` | Yes | -- | JSON array mapping GitLab projects to Telegram chats (see below) |
-| `ALERT_STYLE` | No | `card` | Global fallback message format: `card`, `badge`, or `minimal` |
+| `ALERT_STYLE` | No | `card` | Global fallback message format: `card`, `tree`, or `minimal` |
 | `PORT` | No | `3000` | Primary port for the webhook server |
 
 > [!IMPORTANT]
@@ -175,7 +175,7 @@ The `REPOSITORY_CONFIG` variable defines which GitLab projects to monitor and wh
     "projectName": "Frontend App",
     "chatId": "-1009876543210",
     "secret": "webhook-secret-for-repo-2",
-    "style": "badge"
+    "style": "tree"
   }
 ]
 ```
@@ -188,23 +188,23 @@ The `REPOSITORY_CONFIG` variable defines which GitLab projects to monitor and wh
 | `projectName` | No | Custom display name for alerts (overrides GitLab project name) |
 | `chatId` | Yes | Telegram chat/group ID to send alerts to |
 | `secret` | No | Webhook secret token (must match GitLab webhook settings) |
-| `style` | No | Alert style: `card`, `badge`, or `minimal` (falls back to `ALERT_STYLE`) |
+| `style` | No | Alert style: `card`, `tree`, or `minimal` (falls back to `ALERT_STYLE`) |
 
 In your `.env` file, the JSON must be on a **single line**:
 
 ```env
-REPOSITORY_CONFIG=[{"projectId":123,"projectName":"My API","chatId":"-1001234567890","secret":"secret1","style":"card"},{"projectId":456,"projectName":"Frontend","chatId":"-1009876543210","secret":"secret2","style":"badge"}]
+REPOSITORY_CONFIG=[{"projectId":123,"projectName":"My API","chatId":"-1001234567890","secret":"secret1","style":"card"},{"projectId":456,"projectName":"Frontend","chatId":"-1009876543210","secret":"secret2","style":"tree"}]
 ```
 
 ### Alert Styles
 
 The `style` field (per repo) or `ALERT_STYLE` (global fallback) controls how pipeline notifications appear in Telegram:
 
-| Style | Description | Example Output |
-|---|---|---|
-| `card` | Clean card layout with bold labels and monospaced values | Status header, project name, branch, commit, author, duration |
-| `badge` | Structured list with tree-style connectors and a "View in GitLab" link | Badge header, tree-formatted fields, commit message, inline link |
-| `minimal` | Compact single-line format with inline metadata | Status + project, inline branch/commit/author, "Open Pipeline" link |
+| Style | Description |
+|---|---|
+| `card` | Clean card layout with bold labels and monospaced values.|
+| `tree` | Structured list with tree-style connectors (`├─` / `└─`).|
+| `minimal` | Compact format with inline badges separated by label.|
 
 All styles include an inline keyboard with buttons linking to the pipeline, commit, and repository.
 

@@ -66,22 +66,22 @@ function runUnitTests() {
             },
         },
         {
-            name: 'Badge style: Format success pipeline message',
+            name: 'Tree style: Format success pipeline message',
             fixture: 'pipeline-success.json',
-            style: 'badge',
+            style: 'tree',
             assertions: (msg) => {
-                assert(msg.includes('SUCCESS'), 'Should contain "SUCCESS" badge');
+                assert(msg.includes('Passed'), 'Should contain "Passed"');
                 assert(msg.includes('\u251C\u2500'), 'Should contain tree connector');
                 assert(msg.includes('\u2514\u2500'), 'Should contain last tree connector');
                 assert(msg.includes('15m 30s'), 'Should contain formatted duration');
             },
         },
         {
-            name: 'Badge style: Format failed pipeline message',
+            name: 'Tree style: Format failed pipeline message',
             fixture: 'pipeline-failed.json',
-            style: 'badge',
+            style: 'tree',
             assertions: (msg) => {
-                assert(msg.includes('FAILED'), 'Should contain "FAILED" badge');
+                assert(msg.includes('Failed'), 'Should contain "Failed"');
                 assert(msg.includes('feature/broken-thing'), 'Should contain feature branch');
             },
         },

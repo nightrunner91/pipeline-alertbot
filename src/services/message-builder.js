@@ -84,7 +84,7 @@ function extractData(payload, projectNameOverride) {
 }
 
 function formatCardStyle(data) {
-    let msg = `${data.emoji} ${data.statusText} [${data.stageName}]\n`;
+    let msg = `<b>${data.emoji} ${data.statusText} [${data.stageName}]</b>\n`;
     msg += `\n`;
     msg += `<b>${data.project}</b>\n`;
     msg += `\n`;
@@ -98,7 +98,7 @@ function formatCardStyle(data) {
 }
 
 function formatTreeStyle(data) {
-    let msg = `${data.emoji} ${data.statusText} [${data.stageName}]\n`;
+    let msg = `<b>${data.emoji} ${data.statusText} [${data.stageName}]</b>\n`;
     msg += `\n`;
     msg += `<b>${data.project}</b>\n`;
     msg += `\u251C\u2500 <b>Branch:</b> <code>${data.ref}</code>\n`;
@@ -113,7 +113,7 @@ function formatTreeStyle(data) {
 }
 
 function formatMinimalStyle(data) {
-    let msg = `${data.emoji} ${data.statusText} [${data.stageName}]\n`;
+    let msg = `<b>${data.emoji} ${data.statusText} [${data.stageName}]</b>\n`;
     msg += `\n`;
     msg += `<b>${data.project}</b>\n`;
     msg += `\n`;
@@ -125,7 +125,7 @@ function formatMinimalStyle(data) {
     if (data.duration && data.status !== 'running') {
         badges.push(`<code>${data.duration}</code>`);
     }
-    msg += badges.join(' | ');
+    msg += badges.join(' / ');
     return msg;
 }
 

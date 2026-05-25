@@ -2,7 +2,7 @@ const express = require('express');
 const { logInfo, logError } = require('../utils/logger');
 const { formatPipelineMessageWithKeyboard } = require('../services/gitlab');
 const { sendPipelineNotification } = require('../bot');
-const { findRepoConfig, validateWebhookSecret } = require('../utils/repo-config');
+const { findRepoConfig, validateWebhookSecret, shouldNotify, extractStageName, getDeployLink } = require('../utils/repo-config');
 
 const MAX_PAYLOAD_SIZE = '50kb';
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
@@ -100,7 +100,18 @@ function createServer(bot, config, repositories) {
 
             const status = payload.object_attributes?.status;
             if (['running', 'success', 'failed', 'canceled'].includes(status)) {
-                const { message, reply_markup } = formatPipelineMessageWithKeyboard(payload, repoConfig.style, repoConfig.projectName);
+                if (!shouldNotify(repoConfig, payload)) {
+                    logInfo('Notification skipped by notifyRules', {
+                        project: repoConfig.projectName,
+                        stage: extractStageName(payload),
+                        status,
+                    });
+                    return res.status(200).send('OK');
+                }
+
+                const stageName = extractStageName(payload);
+                const deployLink = getDeployLink(repoConfig, stageName);
+                const { message, reply_markup } = formatPipelineMessageWithKeyboard(payload, repoConfig.style, repoConfig.projectName, deployLink);
                 await sendPipelineNotification(bot, repoConfig.chatId, message, reply_markup);
             }
 

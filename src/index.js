@@ -42,6 +42,11 @@ if (config.botToken) {
     try {
         bot = createBot(config.botToken);
         logInfo('Telegram bot initialized successfully');
+        
+        // Start bot with long polling (coexists with Express webhook server)
+        bot.launch().catch((err) => {
+            logError('Failed to start bot', err);
+        });
     } catch (err) {
         logError('Failed to initialize Telegram bot', err);
     }

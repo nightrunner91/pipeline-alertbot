@@ -1,4 +1,4 @@
-const { parseRepositoryConfig, findRepoConfig, validateWebhookSecret } = require('../src/utils/repo-config');
+const { parseRepositoryConfig, findRepoConfig, validateWebhookSecret, shouldNotify, extractStageName, getDeployLink } = require('../src/utils/repo-config');
 
 function assert(condition, message) {
     if (!condition) {
@@ -178,6 +178,208 @@ function runTests() {
                 const repos = parseRepositoryConfig(envConfig, null, null, 'card');
                 const config = repos.get('id:123');
                 assert(config.projectName === null, `Expected projectName null, got "${config.projectName}"`);
+            },
+        },
+        {
+            name: 'Parse notifyRules from config',
+            run: () => {
+                const envConfig = JSON.stringify([
+                    {
+                        projectId: 123,
+                        chatId: '-100111',
+                        notifyRules: {
+                            build: { send: ['success', 'failed'], ignore: ['canceled'] },
+                            deploy: { send: ['success'], ignore: [] }
+                        }
+                    },
+                ]);
+                const repos = parseRepositoryConfig(envConfig, null, null, 'card');
+                const config = repos.get('id:123');
+                assert(config.notifyRules !== null, 'Should have notifyRules');
+                assert(config.notifyRules.build.send.includes('success'), 'Should have build.send with success');
+                assert(config.notifyRules.deploy.send.includes('success'), 'Should have deploy.send with success');
+            },
+        },
+        {
+            name: 'notifyRules defaults to null when not specified',
+            run: () => {
+                const envConfig = JSON.stringify([
+                    { projectId: 123, chatId: '-100111' },
+                ]);
+                const repos = parseRepositoryConfig(envConfig, null, null, 'card');
+                const config = repos.get('id:123');
+                assert(config.notifyRules === null, `Expected notifyRules null, got "${config.notifyRules}"`);
+            },
+        },
+        {
+            name: 'Parse deployLinks from config',
+            run: () => {
+                const envConfig = JSON.stringify([
+                    {
+                        projectId: 123,
+                        chatId: '-100111',
+                        deployLinks: {
+                            deploy: { url: 'https://example.com', name: 'Open Site' }
+                        }
+                    },
+                ]);
+                const repos = parseRepositoryConfig(envConfig, null, null, 'card');
+                const config = repos.get('id:123');
+                assert(config.deployLinks !== null, 'Should have deployLinks');
+                assert(config.deployLinks.deploy.url === 'https://example.com', 'Should have deploy URL');
+                assert(config.deployLinks.deploy.name === 'Open Site', 'Should have deploy name');
+            },
+        },
+        {
+            name: 'deployLinks defaults to null when not specified',
+            run: () => {
+                const envConfig = JSON.stringify([
+                    { projectId: 123, chatId: '-100111' },
+                ]);
+                const repos = parseRepositoryConfig(envConfig, null, null, 'card');
+                const config = repos.get('id:123');
+                assert(config.deployLinks === null, `Expected deployLinks null, got "${config.deployLinks}"`);
+            },
+        },
+        {
+            name: 'shouldNotify returns true when no notifyRules',
+            run: () => {
+                const repoConfig = { chatId: '-100111', notifyRules: null };
+                const payload = { object_attributes: { status: 'success', stages: ['build'] } };
+                assert(shouldNotify(repoConfig, payload) === true, 'Should notify when no notifyRules');
+            },
+        },
+        {
+            name: 'shouldNotify returns true when stage not in notifyRules',
+            run: () => {
+                const repoConfig = {
+                    chatId: '-100111',
+                    notifyRules: {
+                        build: { send: ['success'], ignore: [] }
+                    }
+                };
+                const payload = { object_attributes: { status: 'success', stages: ['deploy'] } };
+                assert(shouldNotify(repoConfig, payload) === true, 'Should notify when stage not in rules');
+            },
+        },
+        {
+            name: 'shouldNotify returns true when status in send list',
+            run: () => {
+                const repoConfig = {
+                    chatId: '-100111',
+                    notifyRules: {
+                        build: { send: ['success', 'failed'], ignore: [] }
+                    }
+                };
+                const payload = { object_attributes: { status: 'success', detailed_status: { context: 'build' } } };
+                assert(shouldNotify(repoConfig, payload) === true, 'Should notify when status in send list');
+            },
+        },
+        {
+            name: 'shouldNotify returns false when status not in send list',
+            run: () => {
+                const repoConfig = {
+                    chatId: '-100111',
+                    notifyRules: {
+                        build: { send: ['success'], ignore: [] }
+                    }
+                };
+                const payload = { object_attributes: { status: 'running', detailed_status: { context: 'build' } } };
+                assert(shouldNotify(repoConfig, payload) === false, 'Should not notify when status not in send list');
+            },
+        },
+        {
+            name: 'shouldNotify returns false when status in ignore list',
+            run: () => {
+                const repoConfig = {
+                    chatId: '-100111',
+                    notifyRules: {
+                        build: { send: [], ignore: ['canceled', 'pending'] }
+                    }
+                };
+                const payload = { object_attributes: { status: 'canceled', detailed_status: { context: 'build' } } };
+                assert(shouldNotify(repoConfig, payload) === false, 'Should not notify when status in ignore list');
+            },
+        },
+        {
+            name: 'shouldNotify: send takes priority over ignore',
+            run: () => {
+                const repoConfig = {
+                    chatId: '-100111',
+                    notifyRules: {
+                        build: { send: ['success', 'failed'], ignore: ['failed'] }
+                    }
+                };
+                const payload = { object_attributes: { status: 'failed', detailed_status: { context: 'build' } } };
+                assert(shouldNotify(repoConfig, payload) === true, 'Send should take priority over ignore');
+            },
+        },
+        {
+            name: 'shouldNotify with empty send list and no ignore allows all',
+            run: () => {
+                const repoConfig = {
+                    chatId: '-100111',
+                    notifyRules: {
+                        build: { send: [], ignore: [] }
+                    }
+                };
+                const payload = { object_attributes: { status: 'success', detailed_status: { context: 'build' } } };
+                assert(shouldNotify(repoConfig, payload) === true, 'Should notify with empty send and ignore');
+            },
+        },
+        {
+            name: 'extractStageName uses detailed_status.context',
+            run: () => {
+                const payload = { object_attributes: { detailed_status: { context: 'deploy' } } };
+                assert(extractStageName(payload) === 'deploy', 'Should extract from detailed_status.context');
+            },
+        },
+        {
+            name: 'extractStageName falls back to first stage',
+            run: () => {
+                const payload = { object_attributes: { stages: ['test', 'deploy'] } };
+                assert(extractStageName(payload) === 'test', 'Should fall back to first stage');
+            },
+        },
+        {
+            name: 'extractStageName returns "unknown" when no stage info',
+            run: () => {
+                const payload = { object_attributes: {} };
+                assert(extractStageName(payload) === 'unknown', 'Should return "unknown"');
+            },
+        },
+        {
+            name: 'getDeployLink returns link for matching stage',
+            run: () => {
+                const repoConfig = {
+                    deployLinks: {
+                        deploy: { url: 'https://example.com', name: 'Open Site' }
+                    }
+                };
+                const link = getDeployLink(repoConfig, 'deploy');
+                assert(link !== null, 'Should return link');
+                assert(link.url === 'https://example.com', 'Should have correct URL');
+                assert(link.name === 'Open Site', 'Should have correct name');
+            },
+        },
+        {
+            name: 'getDeployLink returns null for non-matching stage',
+            run: () => {
+                const repoConfig = {
+                    deployLinks: {
+                        deploy: { url: 'https://example.com', name: 'Open Site' }
+                    }
+                };
+                const link = getDeployLink(repoConfig, 'build');
+                assert(link === null, 'Should return null for non-matching stage');
+            },
+        },
+        {
+            name: 'getDeployLink returns null when no deployLinks',
+            run: () => {
+                const repoConfig = { chatId: '-100111' };
+                const link = getDeployLink(repoConfig, 'deploy');
+                assert(link === null, 'Should return null when no deployLinks');
             },
         },
     ];

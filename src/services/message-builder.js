@@ -33,6 +33,18 @@ function getStatusConfig(status) {
     return configs[status] || { emoji: '\uD83D\uDCCB', statusText: status || 'Unknown', badge: status || 'UNKNOWN' };
 }
 
+function extractStageName(payload) {
+    const detailedStatus = payload.object_attributes?.detailed_status;
+    if (detailedStatus?.context) {
+        return detailedStatus.context.toLowerCase();
+    }
+    const stages = payload.object_attributes?.stages;
+    if (stages && stages.length > 0) {
+        return stages[0].toLowerCase();
+    }
+    return 'pipeline';
+}
+
 function extractData(payload, projectNameOverride) {
     const project = escapeHtml(projectNameOverride || payload.project?.name || 'Unknown Project');
     const namespace = escapeHtml(payload.project?.namespace || '');
@@ -41,6 +53,7 @@ function extractData(payload, projectNameOverride) {
     const pipelineId = payload.object_attributes?.id;
     const duration = formatDuration(payload.object_attributes?.duration);
     const stages = formatStages(payload.object_attributes?.stages);
+    const stageName = extractStageName(payload);
     const sha = payload.object_attributes?.sha || '';
     const shortSha = escapeHtml(sha.substring(0, 8));
     const author = escapeHtml(payload.commit?.author?.name || 'Unknown');
@@ -58,6 +71,7 @@ function extractData(payload, projectNameOverride) {
         pipelineId,
         duration,
         stages,
+        stageName,
         shortSha,
         author,
         commitMsg,
@@ -70,15 +84,12 @@ function extractData(payload, projectNameOverride) {
 }
 
 function formatCardStyle(data) {
-    let msg = `${data.emoji} ${data.statusText}\n`;
+    let msg = `${data.emoji} ${data.statusText} [${data.stageName}]\n`;
     msg += `\n`;
     msg += `<b>${data.project}</b>\n`;
     msg += `\n`;
     msg += `<b>Branch</b> - <code>${data.ref}</code>\n`;
     msg += `<b>Commit</b> - <code>${data.shortSha}</code>\n`;
-    if (data.stages) {
-        msg += `<b>Stages</b> - <code>${data.stages}</code>\n`;
-    }
     msg += `<b>Author</b> - <code>${data.author}</code>\n`;
     if (data.duration && data.status !== 'running') {
         msg += `<b>Duration</b> - <code>${data.duration}</code>\n`;
@@ -87,14 +98,11 @@ function formatCardStyle(data) {
 }
 
 function formatTreeStyle(data) {
-    let msg = `${data.emoji} ${data.statusText}\n`;
+    let msg = `${data.emoji} ${data.statusText} [${data.stageName}]\n`;
     msg += `\n`;
     msg += `<b>${data.project}</b>\n`;
     msg += `\u251C\u2500 <b>Branch:</b> <code>${data.ref}</code>\n`;
     msg += `\u251C\u2500 <b>Commit:</b> <code>${data.shortSha}</code>\n`;
-    if (data.stages) {
-        msg += `\u251C\u2500 <b>Stages:</b> <code>${data.stages}</code>\n`;
-    }
     if (data.duration && data.status !== 'running') {
         msg += `\u251C\u2500 <b>Author:</b> <code>${data.author}</code>\n`;
         msg += `\u2514\u2500 <b>Duration:</b> <code>${data.duration}</code>\n`;
@@ -105,7 +113,7 @@ function formatTreeStyle(data) {
 }
 
 function formatMinimalStyle(data) {
-    let msg = `${data.emoji} ${data.statusText}\n`;
+    let msg = `${data.emoji} ${data.statusText} [${data.stageName}]\n`;
     msg += `\n`;
     msg += `<b>${data.project}</b>\n`;
     msg += `\n`;
@@ -134,7 +142,7 @@ function buildMessage(payload, style = 'card', projectNameOverride) {
     }
 }
 
-function buildInlineKeyboard(data) {
+function buildInlineKeyboard(data, deployLink) {
     const buttons = [];
     const row1 = [];
     if (data.pipelineUrl) {
@@ -147,13 +155,16 @@ function buildInlineKeyboard(data) {
     if (data.repoUrl) {
         buttons.push([{ text: 'View repository', url: data.repoUrl }]);
     }
+    if (deployLink && deployLink.url) {
+        buttons.push([{ text: deployLink.name || 'View', url: deployLink.url }]);
+    }
     return buttons.length ? { inline_keyboard: buttons } : undefined;
 }
 
-function buildMessageWithKeyboard(payload, style = 'card', projectNameOverride) {
+function buildMessageWithKeyboard(payload, style = 'card', projectNameOverride, deployLink) {
     const data = extractData(payload, projectNameOverride);
     const message = buildMessage(payload, style, projectNameOverride);
-    const reply_markup = buildInlineKeyboard(data);
+    const reply_markup = buildInlineKeyboard(data, deployLink);
     return { message, reply_markup };
 }
 
@@ -161,6 +172,7 @@ module.exports = {
     escapeHtml,
     formatDuration,
     formatStages,
+    extractStageName,
     getStatusConfig,
     buildMessage,
     buildMessageWithKeyboard,

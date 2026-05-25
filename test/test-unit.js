@@ -1,5 +1,5 @@
 const { formatPipelineMessage, formatPipelineMessageWithKeyboard } = require('../src/services/gitlab');
-const { buildMessage, formatDuration, formatStages } = require('../src/services/message-builder');
+const { buildMessage, formatDuration, formatStages, extractStageName } = require('../src/services/message-builder');
 const fs = require('fs');
 const path = require('path');
 
@@ -26,11 +26,12 @@ function runUnitTests() {
             fixture: 'pipeline-running.json',
             style: 'card',
             assertions: (msg) => {
-                assert(msg.includes('Running'), 'Should contain "Running"');
+                assert(msg.includes('Running [build]'), 'Should contain "Running [build]"');
                 assert(msg.includes('my-awesome-project'), 'Should contain project name');
                 assert(msg.includes('main'), 'Should contain branch name');
                 assert(msg.includes('John Doe'), 'Should contain author name');
                 assert(!msg.includes('Duration'), 'Should not contain duration for running');
+                assert(!msg.includes('Stages'), 'Should not contain stages line');
             },
         },
         {
@@ -38,10 +39,10 @@ function runUnitTests() {
             fixture: 'pipeline-success.json',
             style: 'card',
             assertions: (msg) => {
-                assert(msg.includes('Passed'), 'Should contain "Passed"');
+                assert(msg.includes('Passed [deploy]'), 'Should contain "Passed [deploy]"');
                 assert(msg.includes('\u2705'), 'Should contain success emoji');
                 assert(msg.includes('15m 30s'), 'Should contain formatted duration');
-                assert(msg.includes('build \u2192 test \u2192 deploy'), 'Should contain stages');
+                assert(!msg.includes('Stages'), 'Should not contain stages line');
             },
         },
         {
@@ -49,11 +50,12 @@ function runUnitTests() {
             fixture: 'pipeline-failed.json',
             style: 'card',
             assertions: (msg) => {
-                assert(msg.includes('Failed'), 'Should contain "Failed"');
+                assert(msg.includes('Failed [test]'), 'Should contain "Failed [test]"');
                 assert(msg.includes('\u274C'), 'Should contain failure emoji');
                 assert(msg.includes('feature/broken-thing'), 'Should contain feature branch');
                 assert(msg.includes('Jane Smith'), 'Should contain author name');
                 assert(msg.includes('5m 12s'), 'Should contain formatted duration');
+                assert(!msg.includes('Stages'), 'Should not contain stages line');
             },
         },
         {
@@ -61,8 +63,9 @@ function runUnitTests() {
             fixture: 'pipeline-canceled.json',
             style: 'card',
             assertions: (msg) => {
-                assert(msg.includes('Canceled'), 'Should contain "Canceled"');
+                assert(msg.includes('Canceled [build]'), 'Should contain "Canceled [build]"');
                 assert(msg.includes('\u26A0\uFE0F'), 'Should contain warning emoji');
+                assert(!msg.includes('Stages'), 'Should not contain stages line');
             },
         },
         {
@@ -70,10 +73,11 @@ function runUnitTests() {
             fixture: 'pipeline-success.json',
             style: 'tree',
             assertions: (msg) => {
-                assert(msg.includes('Passed'), 'Should contain "Passed"');
+                assert(msg.includes('Passed [deploy]'), 'Should contain "Passed [deploy]"');
                 assert(msg.includes('\u251C\u2500'), 'Should contain tree connector');
                 assert(msg.includes('\u2514\u2500'), 'Should contain last tree connector');
                 assert(msg.includes('15m 30s'), 'Should contain formatted duration');
+                assert(!msg.includes('Stages'), 'Should not contain stages line');
             },
         },
         {
@@ -81,8 +85,9 @@ function runUnitTests() {
             fixture: 'pipeline-failed.json',
             style: 'tree',
             assertions: (msg) => {
-                assert(msg.includes('Failed'), 'Should contain "Failed"');
+                assert(msg.includes('Failed [test]'), 'Should contain "Failed [test]"');
                 assert(msg.includes('feature/broken-thing'), 'Should contain feature branch');
+                assert(!msg.includes('Stages'), 'Should not contain stages line');
             },
         },
         {
@@ -90,10 +95,11 @@ function runUnitTests() {
             fixture: 'pipeline-success.json',
             style: 'minimal',
             assertions: (msg) => {
-                assert(msg.includes('Passed'), 'Should contain "Passed"');
+                assert(msg.includes('Passed [deploy]'), 'Should contain "Passed [deploy]"');
                 assert(msg.includes('main'), 'Should contain branch');
                 assert(msg.includes('John Doe'), 'Should contain author');
                 assert(msg.includes('15m 30s'), 'Should contain duration');
+                assert(!msg.includes('Stages'), 'Should not contain stages line');
             },
         },
         {
@@ -122,6 +128,21 @@ function runUnitTests() {
             withKeyboard: true,
         },
         {
+            name: 'Inline keyboard with deployLinks adds extra button',
+            fixture: 'pipeline-success.json',
+            style: 'card',
+            assertions: (msg, reply_markup) => {
+                assert(reply_markup, 'Should have reply_markup');
+                assert(reply_markup.inline_keyboard, 'Should have inline_keyboard');
+                assert(reply_markup.inline_keyboard.length === 3, 'Should have three rows with deployLink');
+                assert(reply_markup.inline_keyboard[2].length === 1, 'Third row should have one button');
+                assert(reply_markup.inline_keyboard[2][0].text === 'Open Site', 'Deploy button should show custom name');
+                assert(reply_markup.inline_keyboard[2][0].url === 'https://example.com/deploy', 'Deploy button should have correct URL');
+            },
+            withKeyboard: true,
+            deployLink: { url: 'https://example.com/deploy', name: 'Open Site' },
+        },
+        {
             name: 'Duration formatter works correctly',
             fixture: null,
             style: null,
@@ -145,6 +166,36 @@ function runUnitTests() {
                 assert(formatStages(['build']) === 'build', 'Single stage should work');
                 assert(formatStages([]) === null, 'Empty array should return null');
                 assert(formatStages(null) === null, 'null should return null');
+            },
+        },
+        {
+            name: 'Stage name extractor uses detailed_status.context',
+            fixture: 'pipeline-running.json',
+            style: null,
+            isUtility: true,
+            assertions: () => {
+                const payload = JSON.parse(fs.readFileSync(path.join(FIXTURES_DIR, 'pipeline-running.json'), 'utf-8'));
+                assert(extractStageName(payload) === 'build', 'Should extract stage from detailed_status.context');
+            },
+        },
+        {
+            name: 'Stage name extractor falls back to first stage',
+            fixture: null,
+            style: null,
+            isUtility: true,
+            assertions: () => {
+                const payload = { object_attributes: { stages: ['test', 'deploy'] } };
+                assert(extractStageName(payload) === 'test', 'Should fall back to first stage');
+            },
+        },
+        {
+            name: 'Stage name extractor falls back to "pipeline"',
+            fixture: null,
+            style: null,
+            isUtility: true,
+            assertions: () => {
+                const payload = { object_attributes: {} };
+                assert(extractStageName(payload) === 'pipeline', 'Should fall back to "pipeline"');
             },
         },
         {
@@ -174,7 +225,7 @@ function runUnitTests() {
             const payload = JSON.parse(fs.readFileSync(fixturePath, 'utf-8'));
 
             if (test.withKeyboard) {
-                const { message, reply_markup } = formatPipelineMessageWithKeyboard(payload, test.style, test.projectNameOverride);
+                const { message, reply_markup } = formatPipelineMessageWithKeyboard(payload, test.style, test.projectNameOverride, test.deployLink);
                 test.assertions(message, reply_markup);
             } else {
                 const message = formatPipelineMessage(payload, test.style, test.projectNameOverride);

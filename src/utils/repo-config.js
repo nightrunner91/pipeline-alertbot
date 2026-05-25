@@ -1,6 +1,8 @@
 const crypto = require('crypto');
 const { logInfo, logError } = require('./logger');
 
+const VALID_STATUSES = ['success', 'failed', 'running', 'canceled', 'pending', 'manual'];
+
 function parseRepositoryConfig(envConfig, fallbackGroupId, fallbackSecret, fallbackStyle) {
     const repos = new Map();
 
@@ -26,6 +28,8 @@ function parseRepositoryConfig(envConfig, fallbackGroupId, fallbackSecret, fallb
                         style: repo.style || fallbackStyle || 'card',
                         projectId: repo.projectId,
                         projectName: repo.projectName || null,
+                        notifyRules: repo.notifyRules || null,
+                        deployLinks: repo.deployLinks || null,
                     });
 
                     logInfo(`Registered repository config: ${key} -> chat ${repo.chatId}`);
@@ -44,6 +48,8 @@ function parseRepositoryConfig(envConfig, fallbackGroupId, fallbackSecret, fallb
                         style: value.style || fallbackStyle || 'card',
                         projectId: key,
                         projectName: value.projectName || null,
+                        notifyRules: value.notifyRules || null,
+                        deployLinks: value.deployLinks || null,
                     });
 
                     logInfo(`Registered repository config: ${normalizedKey} -> chat ${value.chatId}`);
@@ -61,6 +67,8 @@ function parseRepositoryConfig(envConfig, fallbackGroupId, fallbackSecret, fallb
             style: fallbackStyle || 'card',
             projectId: null,
             projectName: null,
+            notifyRules: null,
+            deployLinks: null,
         });
         logInfo('Using fallback single-repo configuration');
     }
@@ -97,8 +105,66 @@ function validateWebhookSecret(repoConfig, incomingSecret) {
     return crypto.timingSafeEqual(expected, provided);
 }
 
+function extractStageName(payload) {
+    const detailedStatus = payload.object_attributes?.detailed_status;
+    if (detailedStatus?.context) {
+        return detailedStatus.context.toLowerCase();
+    }
+    const stages = payload.object_attributes?.stages;
+    if (stages && stages.length > 0) {
+        return stages[0].toLowerCase();
+    }
+    return 'unknown';
+}
+
+function shouldNotify(repoConfig, payload) {
+    const notifyRules = repoConfig?.notifyRules;
+    if (!notifyRules) {
+        return true;
+    }
+
+    const stageName = extractStageName(payload);
+    const status = payload.object_attributes?.status;
+
+    const stageRules = notifyRules[stageName];
+    if (!stageRules) {
+        return true;
+    }
+
+    const sendList = stageRules.send || [];
+    const ignoreList = stageRules.ignore || [];
+
+    if (sendList.length > 0 && !sendList.includes(status)) {
+        return false;
+    }
+
+    if (ignoreList.includes(status)) {
+        if (sendList.includes(status)) {
+            return true;
+        }
+        return false;
+    }
+
+    return true;
+}
+
+function getDeployLink(repoConfig, stageName) {
+    const deployLinks = repoConfig?.deployLinks;
+    if (!deployLinks || !stageName) {
+        return null;
+    }
+    const link = deployLinks[stageName];
+    if (link && link.url) {
+        return link;
+    }
+    return null;
+}
+
 module.exports = {
     parseRepositoryConfig,
     findRepoConfig,
     validateWebhookSecret,
+    extractStageName,
+    shouldNotify,
+    getDeployLink,
 };

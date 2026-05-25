@@ -4,8 +4,8 @@ function formatPipelineMessage(payload, style, projectNameOverride) {
     return buildMessage(payload, style, projectNameOverride);
 }
 
-function formatPipelineMessageWithKeyboard(payload, style, projectNameOverride) {
-    return buildMessageWithKeyboard(payload, style, projectNameOverride);
+function formatPipelineMessageWithKeyboard(payload, style, projectNameOverride, deployLink) {
+    return buildMessageWithKeyboard(payload, style, projectNameOverride, deployLink);
 }
 
 module.exports = { formatPipelineMessage, formatPipelineMessageWithKeyboard, escapeHtml };

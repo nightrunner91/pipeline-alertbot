@@ -30,7 +30,10 @@
 - [Configuration](#configuration)
   - [Environment Variables](#environment-variables)
   - [Multi-Repository Mode](#multi-repository-mode)
+  - [Notification Rules](#notification-rules)
+  - [Deploy Links](#deploy-links)
   - [Alert Styles](#alert-styles)
+  - [Config File Tool](#config-file-tool)
 - [GitLab Webhook Setup](#gitlab-webhook-setup)
 - [Deployment](#deployment)
 - [Usage](#usage)
@@ -50,8 +53,12 @@
 - **Multi-repository support** - Monitor many GitLab projects and route alerts to different Telegram chats
 - **Custom project names** - Override GitLab project names with your own display names in alerts
 - **Per-repo alert styles** - Each repository can use a different notification format (card, tree, or minimal)
+- **Stage-aware notifications** - Headers show the pipeline stage name (e.g., `Running [build]`, `Failed [deploy]`)
+- **Per-repo notification filtering** - Control which statuses trigger alerts for each pipeline stage via `notifyRules`
+- **Per-repo deploy links** - Add custom action buttons (e.g., "Open Site", "View Swagger") to notifications via `deployLinks`
 - **Real-time pipeline alerts** - Receive instant notifications for running, successful, failed, and canceled pipelines
 - **Inline keyboard buttons** - Quick-access links to the pipeline, commit, and repository directly in Telegram
+- **Config file tool** - Manage repository configs in a readable JS file and generate env-ready JSON
 - **Secure webhook validation** - Validates incoming requests using per-repository secret tokens
 - **Flexible port configuration** - Binds to `0.0.0.0` with configurable port via `PORT` environment variable
 - **Graceful error handling** - Global uncaught exception and unhandled rejection handlers prevent silent crashes
@@ -82,7 +89,11 @@ pipeline-alertbot/
 │   │   └── message-builder.js # Message templates (card, tree, minimal) and HTML escaping
 │   └── utils/
 │       ├── logger.js         # Structured JSON logging (INFO/ERROR)
-│       └── repo-config.js    # Multi-repository config parser and routing logic
+│       └── repo-config.js    # Multi-repository config parser, routing, and notification filtering
+├── config/
+│   └── repos.config.js       # Readable repository configuration (not committed)
+├── scripts/
+│   └── build-config.js       # CLI tool to generate env-ready REPOSITORY_CONFIG
 ├── test/
 │   ├── fixtures/             # Sample GitLab webhook payloads
 │   │   ├── pipeline-running.json
@@ -189,12 +200,63 @@ The `REPOSITORY_CONFIG` variable defines which GitLab projects to monitor and wh
 | `chatId` | Yes | Telegram chat/group ID to send alerts to |
 | `secret` | No | Webhook secret token (must match GitLab webhook settings) |
 | `style` | No | Alert style: `card`, `tree`, or `minimal` (falls back to `ALERT_STYLE`) |
+| `notifyRules` | No | Per-stage notification filtering rules (see [Notification Rules](#notification-rules)) |
+| `deployLinks` | No | Per-stage custom action buttons for notifications (see [Deploy Links](#deploy-links)) |
 
 In your `.env` file, the JSON must be on a **single line**:
 
 ```env
 REPOSITORY_CONFIG=[{"projectId":123,"projectName":"My API","chatId":"-1001234567890","secret":"secret1","style":"card"},{"projectId":456,"projectName":"Frontend","chatId":"-1009876543210","secret":"secret2","style":"tree"}]
 ```
+
+### Notification Rules
+
+The `notifyRules` field lets you control which pipeline statuses trigger notifications for each stage. This is useful for reducing noise -- for example, only getting alerts for failed tests or successful deployments.
+
+```json
+{
+  "projectId": 123,
+  "projectName": "My API",
+  "chatId": "-1001234567890",
+  "notifyRules": {
+    "build":  { "send": ["success", "failed", "running"], "ignore": ["canceled", "pending", "manual"] },
+    "deploy": { "send": ["success", "failed"], "ignore": [] },
+    "test":   { "send": ["failed"], "ignore": [] }
+  }
+}
+```
+
+**How it works:**
+
+- `send` is a **whitelist** -- only these statuses trigger a notification for that stage.
+- `ignore` is a **blacklist** -- these statuses are skipped even if they would otherwise be sent.
+- If a stage is **not listed** in `notifyRules`, all its events are sent (backward compatible).
+- If `notifyRules` is **not present** at all, all events are sent (default behavior).
+- `send` **takes priority**: if a status is in both `send` and `ignore`, it is sent.
+- Valid statuses: `success`, `failed`, `running`, `canceled`, `pending`, `manual`.
+- The stage name is extracted from the GitLab payload (`detailed_status.context` or the first entry in `stages`). If the stage cannot be determined, it is treated as `"unknown"` -- if `"unknown"` is not in `notifyRules`, the event is sent.
+
+### Deploy Links
+
+The `deployLinks` field adds a custom full-width button at the bottom of the notification keyboard. Each stage can have its own link with a custom name:
+
+```json
+{
+  "projectId": 123,
+  "projectName": "My API",
+  "chatId": "-1001234567890",
+  "deployLinks": {
+    "build":  { "url": "", "name": "" },
+    "deploy": { "url": "https://my-api.example.com", "name": "Open Site" },
+    "test":   { "url": "https://my-api.example.com/swagger", "name": "View Swagger" }
+  }
+}
+```
+
+- Each stage can have its own link with `url` and `name`.
+- Links are optional -- if a stage has no `url`, no button is shown for it.
+- The button appears on its own row at the very bottom, after the Pipeline/Commit/View repository buttons.
+- If `deployLinks` is not configured for the repo or the current stage, behavior is unchanged.
 
 ### Alert Styles
 
@@ -206,7 +268,38 @@ The `style` field (per repo) or `ALERT_STYLE` (global fallback) controls how pip
 | `tree` | Structured list with tree-style connectors (`├─` / `└─`).|
 | `minimal` | Compact format with inline badges separated by label.|
 
-All styles include an inline keyboard with buttons linking to the pipeline, commit, and repository.
+All styles include an inline keyboard with buttons linking to the pipeline, commit, and repository. When `deployLinks` is configured, an additional custom button appears at the bottom.
+
+**Stage-aware headers:** All notification styles now include the pipeline stage name in the header line:
+
+```
+🔄 Running [build]
+❌ Failed [deploy]
+✅ Passed [test]
+```
+
+The stage name is extracted from the GitLab payload (`detailed_status.context` or the first entry in `stages`). If neither is available, it falls back to `[pipeline]`.
+
+### Config File Tool
+
+Instead of writing inline JSON in `.env`, you can use the config file tool for a cleaner workflow:
+
+1. Edit `config/repos.config.js` -- a readable JS object format for all your repositories.
+2. Generate the env-ready JSON:
+
+   ```bash
+   # Print JSON to stdout
+   npm run config:build
+
+   # Print in REPOSITORY_CONFIG= format
+   npm run config:build -- --env
+
+   # Write directly to .env
+   npm run config:write
+   ```
+
+> [!NOTE]
+> The `config/` and `scripts/` directories are excluded from git via `.gitignore`. Only the generated `.env` value should be committed or stored in your deployment platform.
 
 ### GitLab Webhook Setup
 
@@ -325,6 +418,8 @@ Tests use fixture files in `test/fixtures/` that simulate real GitLab pipeline e
 | `npm run test:repo-config` | Run repository config tests only |
 | `npm run test:webhooks` | Run webhook tests only |
 | `npm run test:security` | Run security tests only |
+| `npm run config:build` | Print env-ready REPOSITORY_CONFIG JSON to stdout |
+| `npm run config:write` | Write REPOSITORY_CONFIG to .env |
 
 ### Adding a New Alert Style
 

@@ -8,7 +8,10 @@
     "test:unit": "node test/test-unit.js",
     "test:repo-config": "node test/test-repo-config.js",
     "test:webhooks": "node test/test-webhooks.js",
-    "test:security": "node test/test-security.js"
+    "test:security": "node test/test-security.js",
+    "test:telegram": "node test/test-telegram.js",
+    "config:build": "node scripts/build-config.js",
+    "config:write": "node scripts/build-config.js --write"
   },
   "keywords": [],
   "author": "",

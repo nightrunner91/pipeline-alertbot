@@ -270,7 +270,7 @@ The `style` field (per repo) or `ALERT_STYLE` (global fallback) controls how pip
 
 All styles include an inline keyboard with buttons linking to the pipeline, commit, and repository. When `deployLinks` is configured, an additional custom button appears at the bottom.
 
-**Stage-aware headers:** All notification styles now include the pipeline stage name in the header line:
+**Stage-aware headers:** All notification styles include the pipeline stage name in the header line:
 
 ```
 🔄 Running [build]
@@ -297,9 +297,6 @@ Instead of writing inline JSON in `.env`, you can use the config file tool for a
    # Write directly to .env
    npm run config:write
    ```
-
-> [!NOTE]
-> The `config/` and `scripts/` directories are excluded from git via `.gitignore`. Only the generated `.env` value should be committed or stored in your deployment platform.
 
 ### GitLab Webhook Setup
 

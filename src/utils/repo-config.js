@@ -106,14 +106,26 @@ function validateWebhookSecret(repoConfig, incomingSecret) {
 }
 
 function extractStageName(payload) {
+    const status = payload.object_attributes?.status;
+    const stages = payload.object_attributes?.stages;
     const detailedStatus = payload.object_attributes?.detailed_status;
+    const builds = payload.builds;
+
+    if (builds && Array.isArray(builds) && builds.length > 0) {
+        const activeBuild = builds.find((b) => b.status === status) || builds[builds.length - 1];
+        if (activeBuild?.stage) {
+            return activeBuild.stage.toLowerCase();
+        }
+    }
+
     if (detailedStatus?.context) {
         return detailedStatus.context.toLowerCase();
     }
-    const stages = payload.object_attributes?.stages;
+
     if (stages && stages.length > 0) {
         return stages[0].toLowerCase();
     }
+
     return 'unknown';
 }
 

@@ -199,6 +199,38 @@ function runUnitTests() {
             },
         },
         {
+            name: 'Stage name extractor uses builds array when available',
+            fixture: null,
+            style: null,
+            isUtility: true,
+            assertions: () => {
+                const payload = {
+                    object_attributes: { status: 'running', detailed_status: { context: 'build' }, stages: ['build', 'deploy'] },
+                    builds: [
+                        { stage: 'build', status: 'success' },
+                        { stage: 'deploy', status: 'running' },
+                    ],
+                };
+                assert(extractStageName(payload) === 'deploy', 'Should extract stage from builds array matching current status');
+            },
+        },
+        {
+            name: 'Stage name extractor falls back to last build when no status match',
+            fixture: null,
+            style: null,
+            isUtility: true,
+            assertions: () => {
+                const payload = {
+                    object_attributes: { status: 'running', detailed_status: { context: 'build' }, stages: ['build', 'deploy'] },
+                    builds: [
+                        { stage: 'build', status: 'success' },
+                        { stage: 'deploy', status: 'pending' },
+                    ],
+                };
+                assert(extractStageName(payload) === 'deploy', 'Should fall back to last build when no status match');
+            },
+        },
+        {
             name: 'projectName override replaces project name in message',
             fixture: 'pipeline-running.json',
             style: 'card',

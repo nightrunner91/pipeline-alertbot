@@ -349,6 +349,19 @@ function runTests() {
             },
         },
         {
+            name: 'extractStageName uses builds array when available',
+            run: () => {
+                const payload = {
+                    object_attributes: { status: 'running', detailed_status: { context: 'build' }, stages: ['build', 'deploy'] },
+                    builds: [
+                        { stage: 'build', status: 'success' },
+                        { stage: 'deploy', status: 'running' },
+                    ],
+                };
+                assert(extractStageName(payload) === 'deploy', 'Should extract stage from builds array matching current status');
+            },
+        },
+        {
             name: 'getDeployLink returns link for matching stage',
             run: () => {
                 const repoConfig = {

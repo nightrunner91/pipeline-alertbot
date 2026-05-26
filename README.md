@@ -1,4 +1,4 @@
-# <p align="center">Pipeline Alertbot</p>
+# <p align="center">pipebot</p>
 
 <p align="center">
   <strong>Real-time GitLab CI/CD pipeline notifications delivered to Telegram.</strong>
@@ -46,28 +46,16 @@
 
 ## Project Overview
 
-**Pipeline Alertbot** is a lightweight, production-ready webhook relay that bridges GitLab CI/CD pipeline events to Telegram group chats. It receives pipeline webhooks from GitLab, formats them into readable notifications, and sends them to designated Telegram chats in real time. The bot supports **multi-repository mode**, allowing you to monitor multiple GitLab projects and route alerts to different Telegram groups. 
+**pipebot** is a lightweight, production-ready webhook relay that bridges GitLab CI/CD pipeline events to Telegram group chats. It receives pipeline webhooks from GitLab, formats them into readable notifications, and sends them to designated Telegram chats in real time. The bot supports **multi-repository mode**, allowing you to monitor multiple GitLab projects and route alerts to different Telegram groups. 
 
 ## Features
 
 - **Multi-repository support** - Monitor many GitLab projects and route alerts to different Telegram chats
-- **Custom project names** - Override GitLab project names with your own display names in alerts
-- **Per-repo alert styles** - Each repository can use a different notification format (card, tree, or minimal)
-- **Stage-aware notifications** - Headers show the pipeline stage name (e.g., `Running [build]`, `Failed [deploy]`)
-- **Pipeline state tracking** - Detects stage transitions within a single pipeline run and sends per-stage notifications
-- **Per-repo notification filtering** - Control which statuses trigger alerts for each pipeline stage via `notifyRules`
-- **Per-repo deploy links** - Add custom action buttons (e.g., "Open Site", "View Swagger") to notifications via `deployLinks`
-- **Real-time pipeline alerts** - Receive instant notifications for running, successful, failed, and canceled pipelines
-- **Inline keyboard buttons** - Quick-access links to the pipeline, commit, and repository directly in Telegram
-- **Config file tool** - Manage repository configs in a readable JS file and generate env-ready JSON
-- **Secure webhook validation** - Validates incoming requests using per-repository secret tokens with timing-safe comparison
-- **Rate limiting** - Built-in rate limiter (100 requests per minute per IP) prevents abuse
-- **Security headers** - Adds HSTS, CSP, X-Frame-Options, and other security headers to all responses
-- **Payload size limit** - Rejects webhook payloads larger than 50kb
-- **Flexible port configuration** - Binds to `0.0.0.0` with configurable port via `PORT` environment variable; automatically tries fallback ports (3000, 8080, 5000, 8000, 4000, 80, 5952) if primary port is unavailable
-- **Bot long polling** - Telegram bot runs via long polling alongside the Express webhook server
-- **Bot commands** - Responds to `/start` command with a greeting message
-- **Graceful error handling** - Global uncaught exception and unhandled rejection handlers prevent silent crashes
+- **Stage-aware notifications** - Per-stage alerts with stage name headers, transition tracking, and configurable filtering via `notifyRules`
+- **Customizable alerts** - Per-repo display names, three message styles (card, tree, minimal), and custom deploy link buttons
+- **Inline keyboard** - Quick-access buttons for pipeline, commit, and repository links in every notification
+- **Secure & production-ready** - Timing-safe webhook validation, rate limiting, security headers, payload size limits, structured logging with sensitive data sanitization
+- **Flexible deployment** - Configurable port with automatic fallback, bot runs via long polling alongside the Express webhook server
 - **Diagnostics endpoint** - Health check endpoint that reports configuration status without exposing secrets
 - **Zero-downtime startup** - Bot initializes independently from the webhook server; missing credentials do not block server startup
 

@@ -77,7 +77,7 @@
 ## Project Structure
 
 ```
-pipeline-alertbot/
+pipebot/
 ├── src/
 │   ├── index.js              # Entry point: config, initialization, multi-port startup
 │   ├── bot/
@@ -124,8 +124,8 @@ pipeline-alertbot/
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/your-org/pipeline-alertbot.git
-   cd pipeline-alertbot
+   git clone https://github.com/your-org/pipebot.git
+   cd pipebot
    ```
 
 2. Install dependencies:

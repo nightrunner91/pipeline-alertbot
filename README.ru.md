@@ -77,7 +77,7 @@
 ## Структура проекта
 
 ```
-pipeline-alertbot/
+pipebot/
 ├── src/
 │   ├── index.js              # Точка входа: конфигурация, инициализация, запуск на нескольких портах
 │   ├── bot/
@@ -124,8 +124,8 @@ pipeline-alertbot/
 1. Клонируйте репозиторий:
 
    ```bash
-   git clone https://github.com/your-org/pipeline-alertbot.git
-   cd pipeline-alertbot
+   git clone https://github.com/your-org/pipebot.git
+   cd pipebot
    ```
 
 2. Установите зависимости:

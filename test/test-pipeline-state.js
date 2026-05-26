@@ -164,13 +164,30 @@ const tests = [
         },
     },
     {
+        name: 'createPayloadForStage returns null when build not found',
+        fn: () => {
+            const original = createPayload(7, [
+                createBuild('test', 'success'),
+                createBuild('build', 'running'),
+            ]);
+
+            const stageInfo = {
+                stageName: 'nonexistent',
+                currentStatus: 'running',
+            };
+
+            const result = createPayloadForStage(original, stageInfo);
+            assert(result === null, 'Should return null when build not found');
+        },
+    },
+    {
         name: 'Handles payload without builds array',
         fn: () => {
-            clearPipelineState(7);
+            clearPipelineState(8);
             const payload = {
                 object_kind: 'pipeline',
                 object_attributes: {
-                    id: 7,
+                    id: 8,
                     status: 'running',
                 },
             };

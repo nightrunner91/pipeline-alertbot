@@ -92,20 +92,21 @@ function detectStageTransitions(payload) {
 }
 
 function createPayloadForStage(originalPayload, stageInfo) {
-    const modifiedPayload = JSON.parse(JSON.stringify(originalPayload));
-
     const stageBuild = originalPayload.builds?.find(
         (b) => b.stage?.toLowerCase() === stageInfo.stageName
     );
 
-    if (stageBuild) {
-        modifiedPayload.object_attributes.status = stageInfo.currentStatus;
-        if (modifiedPayload.object_attributes.detailed_status) {
-            modifiedPayload.object_attributes.detailed_status.context = stageInfo.stageName;
-            modifiedPayload.object_attributes.detailed_status.text = stageInfo.currentStatus;
-        }
-        modifiedPayload.builds = [stageBuild];
+    if (!stageBuild) {
+        return null;
     }
+
+    const modifiedPayload = JSON.parse(JSON.stringify(originalPayload));
+    modifiedPayload.object_attributes.status = stageInfo.currentStatus;
+    if (modifiedPayload.object_attributes.detailed_status) {
+        modifiedPayload.object_attributes.detailed_status.context = stageInfo.stageName;
+        modifiedPayload.object_attributes.detailed_status.text = stageInfo.currentStatus;
+    }
+    modifiedPayload.builds = [stageBuild];
 
     return modifiedPayload;
 }

@@ -101,6 +101,7 @@ function createServer(bot, config, repositories) {
 
             const status = payload.object_attributes?.status;
             if (['running', 'success', 'failed', 'canceled'].includes(status)) {
+                const hasBuilds = payload.builds && Array.isArray(payload.builds) && payload.builds.length > 0;
                 const transitions = detectStageTransitions(payload);
 
                 if (transitions.length > 0) {
@@ -112,6 +113,12 @@ function createServer(bot, config, repositories) {
 
                     for (const transition of transitions) {
                         const stagePayload = createPayloadForStage(payload, transition);
+                        if (!stagePayload) {
+                            logError('Failed to create stage payload', {
+                                stage: transition.stageName,
+                            });
+                            continue;
+                        }
 
                         if (!shouldNotify(repoConfig, stagePayload)) {
                             logInfo('Notification skipped by notifyRules', {
@@ -127,7 +134,7 @@ function createServer(bot, config, repositories) {
                         const { message, reply_markup } = formatPipelineMessageWithKeyboard(stagePayload, repoConfig.style, repoConfig.projectName, deployLink);
                         await sendPipelineNotification(bot, repoConfig.chatId, message, reply_markup);
                     }
-                } else {
+                } else if (!hasBuilds) {
                     if (!shouldNotify(repoConfig, payload)) {
                         logInfo('Notification skipped by notifyRules', {
                             project: repoConfig.projectName,

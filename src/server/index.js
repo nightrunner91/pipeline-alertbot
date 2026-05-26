@@ -120,6 +120,14 @@ function createServer(bot, config, repositories) {
                             continue;
                         }
 
+                        logInfo('Processing transition', {
+                            stage: transition.stageName,
+                            status: transition.currentStatus,
+                            payloadStatus: stagePayload.object_attributes?.status,
+                            payloadBuildsStatus: stagePayload.builds?.[0]?.status,
+                            payloadBuildsStage: stagePayload.builds?.[0]?.stage,
+                        });
+
                         if (!shouldNotify(repoConfig, stagePayload)) {
                             logInfo('Notification skipped by notifyRules', {
                                 project: repoConfig.projectName,

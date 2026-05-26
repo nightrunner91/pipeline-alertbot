@@ -151,8 +151,15 @@ function shouldNotify(repoConfig, payload) {
     const stageName = extractStageName(payload);
     const status = payload.object_attributes?.status;
 
+    logInfo('shouldNotify check', {
+        stageName,
+        status,
+        availableRules: Object.keys(notifyRules),
+    });
+
     const stageRules = notifyRules[stageName];
     if (!stageRules) {
+        logInfo('shouldNotify: stage not in rules, allowing', { stageName });
         return true;
     }
 
@@ -160,6 +167,7 @@ function shouldNotify(repoConfig, payload) {
     const ignoreList = stageRules.ignore || [];
 
     if (sendList.length > 0 && !sendList.includes(status)) {
+        logInfo('shouldNotify: status not in send list', { stageName, status, sendList });
         return false;
     }
 

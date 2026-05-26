@@ -4,9 +4,10 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "test": "npm run test:unit && npm run test:repo-config && npm run test:webhooks && npm run test:security",
+    "test": "npm run test:unit && npm run test:repo-config && npm run test:pipeline-state && npm run test:webhooks && npm run test:security",
     "test:unit": "node test/test-unit.js",
     "test:repo-config": "node test/test-repo-config.js",
+    "test:pipeline-state": "node test/test-pipeline-state.js",
     "test:webhooks": "node test/test-webhooks.js",
     "test:security": "node test/test-security.js",
     "test:telegram": "node test/test-telegram.js",

@@ -3,6 +3,7 @@ const { logInfo, logError } = require('../utils/logger');
 const { formatPipelineMessageWithKeyboard } = require('../services/gitlab');
 const { sendPipelineNotification } = require('../bot');
 const { findRepoConfig, validateWebhookSecret, shouldNotify, extractStageName, getDeployLink } = require('../utils/repo-config');
+const { detectStageTransitions, createPayloadForStage, clearOldStates } = require('../utils/pipeline-state');
 
 const MAX_PAYLOAD_SIZE = '50kb';
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
@@ -100,20 +101,50 @@ function createServer(bot, config, repositories) {
 
             const status = payload.object_attributes?.status;
             if (['running', 'success', 'failed', 'canceled'].includes(status)) {
-                if (!shouldNotify(repoConfig, payload)) {
-                    logInfo('Notification skipped by notifyRules', {
-                        project: repoConfig.projectName,
-                        stage: extractStageName(payload),
-                        status,
-                    });
-                    return res.status(200).send('OK');
-                }
+                const transitions = detectStageTransitions(payload);
 
-                const stageName = extractStageName(payload);
-                const deployLink = getDeployLink(repoConfig, stageName);
-                const { message, reply_markup } = formatPipelineMessageWithKeyboard(payload, repoConfig.style, repoConfig.projectName, deployLink);
-                await sendPipelineNotification(bot, repoConfig.chatId, message, reply_markup);
+                if (transitions.length > 0) {
+                    logInfo('Stage transitions detected', {
+                        project: repoConfig.projectName,
+                        count: transitions.length,
+                        transitions: transitions.map((t) => `${t.stageName}: ${t.currentStatus}`),
+                    });
+
+                    for (const transition of transitions) {
+                        const stagePayload = createPayloadForStage(payload, transition);
+
+                        if (!shouldNotify(repoConfig, stagePayload)) {
+                            logInfo('Notification skipped by notifyRules', {
+                                project: repoConfig.projectName,
+                                stage: transition.stageName,
+                                status: transition.currentStatus,
+                            });
+                            continue;
+                        }
+
+                        const stageName = transition.stageName;
+                        const deployLink = getDeployLink(repoConfig, stageName);
+                        const { message, reply_markup } = formatPipelineMessageWithKeyboard(stagePayload, repoConfig.style, repoConfig.projectName, deployLink);
+                        await sendPipelineNotification(bot, repoConfig.chatId, message, reply_markup);
+                    }
+                } else {
+                    if (!shouldNotify(repoConfig, payload)) {
+                        logInfo('Notification skipped by notifyRules', {
+                            project: repoConfig.projectName,
+                            stage: extractStageName(payload),
+                            status,
+                        });
+                        return res.status(200).send('OK');
+                    }
+
+                    const stageName = extractStageName(payload);
+                    const deployLink = getDeployLink(repoConfig, stageName);
+                    const { message, reply_markup } = formatPipelineMessageWithKeyboard(payload, repoConfig.style, repoConfig.projectName, deployLink);
+                    await sendPipelineNotification(bot, repoConfig.chatId, message, reply_markup);
+                }
             }
+
+            clearOldStates();
 
             res.status(200).send('OK');
         } catch (error) {

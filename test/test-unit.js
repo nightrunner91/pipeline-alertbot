@@ -1,5 +1,6 @@
 const { formatPipelineMessage, formatPipelineMessageWithKeyboard } = require('../src/services/gitlab');
 const { buildMessage, formatDuration, formatStages, extractStageName } = require('../src/services/message-builder');
+const { normalizeJobPayload } = require('../src/utils/job-normalizer');
 const fs = require('fs');
 const path = require('path');
 
@@ -240,6 +241,62 @@ function runUnitTests() {
             },
             projectNameOverride: 'Custom Project Name',
         },
+        {
+            name: 'Card style: Format running job message',
+            fixture: 'job-running.json',
+            style: 'card',
+            assertions: (msg) => {
+                assert(msg.includes('Running [build]'), 'Should contain "Running [build]"');
+                assert(msg.includes('my-awesome-project'), 'Should contain project name');
+                assert(msg.includes('main'), 'Should contain branch name');
+                assert(msg.includes('John Doe'), 'Should contain author name');
+                assert(!msg.includes('Duration'), 'Should not contain duration for running');
+            },
+        },
+        {
+            name: 'Card style: Format success job message',
+            fixture: 'job-success.json',
+            style: 'card',
+            assertions: (msg) => {
+                assert(msg.includes('Passed [deploy]'), 'Should contain "Passed [deploy]"');
+                assert(msg.includes('\u2705'), 'Should contain success emoji');
+                assert(msg.includes('4m 5s'), 'Should contain formatted duration');
+            },
+        },
+        {
+            name: 'Card style: Format failed job message',
+            fixture: 'job-failed.json',
+            style: 'card',
+            assertions: (msg) => {
+                assert(msg.includes('Failed [test]'), 'Should contain "Failed [test]"');
+                assert(msg.includes('\u274C'), 'Should contain failure emoji');
+                assert(msg.includes('3m 7s'), 'Should contain formatted duration');
+            },
+        },
+        {
+            name: 'Job inline keyboard shows "Job" button',
+            fixture: 'job-running.json',
+            style: 'card',
+            assertions: (msg, reply_markup) => {
+                assert(reply_markup, 'Should have reply_markup');
+                assert(reply_markup.inline_keyboard, 'Should have inline_keyboard');
+                assert(reply_markup.inline_keyboard[0][0].text === 'Job', 'First button should be "Job" for job webhooks');
+                assert(reply_markup.inline_keyboard[0][0].url.includes('/-/jobs/'), 'Job URL should contain /-/jobs/');
+            },
+            withKeyboard: true,
+        },
+        {
+            name: 'Pipeline inline keyboard shows "Pipeline" button',
+            fixture: 'pipeline-running.json',
+            style: 'card',
+            assertions: (msg, reply_markup) => {
+                assert(reply_markup, 'Should have reply_markup');
+                assert(reply_markup.inline_keyboard, 'Should have inline_keyboard');
+                assert(reply_markup.inline_keyboard[0][0].text === 'Pipeline', 'First button should be "Pipeline" for pipeline webhooks');
+                assert(reply_markup.inline_keyboard[0][0].url.includes('/-/pipelines/'), 'Pipeline URL should contain /-/pipelines/');
+            },
+            withKeyboard: true,
+        },
     ];
 
     for (const test of tests) {
@@ -254,7 +311,11 @@ function runUnitTests() {
             }
 
             const fixturePath = path.join(FIXTURES_DIR, test.fixture);
-            const payload = JSON.parse(fs.readFileSync(fixturePath, 'utf-8'));
+            let payload = JSON.parse(fs.readFileSync(fixturePath, 'utf-8'));
+
+            if (payload.object_kind === 'build') {
+                payload = normalizeJobPayload(payload);
+            }
 
             if (test.withKeyboard) {
                 const { message, reply_markup } = formatPipelineMessageWithKeyboard(payload, test.style, test.projectNameOverride, test.deployLink);

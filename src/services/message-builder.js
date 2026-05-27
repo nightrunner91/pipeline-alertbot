@@ -84,7 +84,8 @@ function extractData(payload, projectNameOverride) {
     const author = escapeHtml(payload.commit?.author?.name || 'Unknown');
     const commitMsg = escapeHtml(payload.commit?.message?.trim().split('\n')[0] || '');
     const triggeredBy = escapeHtml(payload.user?.name || '');
-    const pipelineUrl = payload.project?.web_url + '/-/pipelines/' + pipelineId;
+    const pipelineUrl = payload._jobUrl
+        || (payload.project?.web_url + '/-/pipelines/' + pipelineId);
     const commitUrl = payload.commit?.url || '';
     const repoUrl = payload.project?.web_url || '';
 
@@ -171,7 +172,8 @@ function buildInlineKeyboard(data, deployLink) {
     const buttons = [];
     const row1 = [];
     if (data.pipelineUrl) {
-        row1.push({ text: 'Pipeline', url: data.pipelineUrl });
+        const linkLabel = data.pipelineUrl.includes('/-/jobs/') ? 'Job' : 'Pipeline';
+        row1.push({ text: linkLabel, url: data.pipelineUrl });
     }
     if (data.commitUrl) {
         row1.push({ text: 'Commit', url: data.commitUrl });

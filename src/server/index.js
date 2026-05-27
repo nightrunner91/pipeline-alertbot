@@ -47,6 +47,7 @@ function addSecurityHeaders(req, res, next) {
 function createServer(bot, config, repositories) {
     const app = express();
     const rateLimiter = createRateLimiter();
+    const webhookMode = (process.env.WEBHOOK_MODE || 'both').toLowerCase();
 
     app.use(addSecurityHeaders);
     app.use(express.json({ limit: MAX_PAYLOAD_SIZE }));
@@ -132,6 +133,11 @@ function createServer(bot, config, repositories) {
 
             if (objectKind !== 'pipeline') {
                 logInfo('Ignored: unsupported event type', { objectKind });
+                return res.status(200).send('OK');
+            }
+
+            if (webhookMode === 'jobs') {
+                logInfo('Ignored: pipeline events disabled, jobs-only mode');
                 return res.status(200).send('OK');
             }
 

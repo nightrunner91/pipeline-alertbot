@@ -167,6 +167,7 @@ Create a `.env` file in the project root with the following variables:
 | `REPOSITORY_CONFIG` | Yes | -- | JSON array mapping GitLab projects to Telegram chats (see below) |
 | `ALERT_STYLE` | No | `card` | Global fallback message format: `card`, `tree`, or `minimal` |
 | `PORT` | No | `3000` | Primary port for the webhook server |
+| `WEBHOOK_MODE` | No | `both` | Event type to process: `both`, `jobs` (job events only), or `pipeline` (pipeline events only) |
 
 > [!IMPORTANT]
 > Never commit your `.env` file. It is listed in `.gitignore` and should only exist locally or in your deployment platform's secret store.

@@ -77,7 +77,7 @@ function parseRepositoryConfig(envConfig, fallbackGroupId, fallbackSecret, fallb
 }
 
 function findRepoConfig(repos, payload) {
-    const projectId = payload.project?.id;
+    const projectId = payload.project?.id || payload.project_id;
 
     if (projectId) {
         const byId = repos.get(`id:${projectId}`);

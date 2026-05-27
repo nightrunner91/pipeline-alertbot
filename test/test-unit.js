@@ -42,7 +42,7 @@ function runUnitTests() {
             assertions: (msg) => {
                 assert(msg.includes('Passed [deploy]'), 'Should contain "Passed [deploy]"');
                 assert(msg.includes('\u2705'), 'Should contain success emoji');
-                assert(msg.includes('15m 30s'), 'Should contain formatted duration');
+                assert(msg.includes('15:30'), 'Should contain formatted duration');
                 assert(!msg.includes('Stages'), 'Should not contain stages line');
             },
         },
@@ -55,7 +55,7 @@ function runUnitTests() {
                 assert(msg.includes('\u274C'), 'Should contain failure emoji');
                 assert(msg.includes('feature/broken-thing'), 'Should contain feature branch');
                 assert(msg.includes('Jane Smith'), 'Should contain author name');
-                assert(msg.includes('5m 12s'), 'Should contain formatted duration');
+                assert(msg.includes('05:12'), 'Should contain formatted duration');
                 assert(!msg.includes('Stages'), 'Should not contain stages line');
             },
         },
@@ -77,7 +77,7 @@ function runUnitTests() {
                 assert(msg.includes('Passed [deploy]'), 'Should contain "Passed [deploy]"');
                 assert(msg.includes('\u251C\u2500'), 'Should contain tree connector');
                 assert(msg.includes('\u2514\u2500'), 'Should contain last tree connector');
-                assert(msg.includes('15m 30s'), 'Should contain formatted duration');
+                assert(msg.includes('15:30'), 'Should contain formatted duration');
                 assert(!msg.includes('Stages'), 'Should not contain stages line');
             },
         },
@@ -99,7 +99,7 @@ function runUnitTests() {
                 assert(msg.includes('Passed [deploy]'), 'Should contain "Passed [deploy]"');
                 assert(msg.includes('main'), 'Should contain branch');
                 assert(msg.includes('John Doe'), 'Should contain author');
-                assert(msg.includes('15m 30s'), 'Should contain duration');
+                assert(msg.includes('15:30'), 'Should contain duration');
                 assert(!msg.includes('Stages'), 'Should not contain stages line');
             },
         },
@@ -149,12 +149,14 @@ function runUnitTests() {
             style: null,
             isUtility: true,
             assertions: () => {
-                assert(formatDuration(312) === '5m 12s', '312s should be 5m 12s');
-                assert(formatDuration(930) === '15m 30s', '930s should be 15m 30s');
-                assert(formatDuration(45) === '45s', '45s should be 45s');
-                assert(formatDuration(0) === '0s', '0s should be 0s');
+                assert(formatDuration(312) === '05:12', '312s should be 05:12');
+                assert(formatDuration(930) === '15:30', '930s should be 15:30');
+                assert(formatDuration(45) === '00:45', '45s should be 00:45');
+                assert(formatDuration(0) === '00:00', '0s should be 00:00');
                 assert(formatDuration(null) === null, 'null should return null');
                 assert(formatDuration(undefined) === null, 'undefined should return null');
+                assert(formatDuration('56.441014s') === '00:56', 'string duration should be parsed');
+                assert(formatDuration('1m 30s') === null, 'invalid string should return null');
             },
         },
         {
@@ -260,7 +262,7 @@ function runUnitTests() {
             assertions: (msg) => {
                 assert(msg.includes('Passed [deploy]'), 'Should contain "Passed [deploy]"');
                 assert(msg.includes('\u2705'), 'Should contain success emoji');
-                assert(msg.includes('4m 5s'), 'Should contain formatted duration');
+                assert(msg.includes('04:05'), 'Should contain formatted duration');
             },
         },
         {
@@ -270,7 +272,7 @@ function runUnitTests() {
             assertions: (msg) => {
                 assert(msg.includes('Failed [test]'), 'Should contain "Failed [test]"');
                 assert(msg.includes('\u274C'), 'Should contain failure emoji');
-                assert(msg.includes('3m 7s'), 'Should contain formatted duration');
+                assert(msg.includes('03:07'), 'Should contain formatted duration');
             },
         },
         {

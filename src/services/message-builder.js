@@ -10,12 +10,19 @@ function escapeHtml(unsafe) {
 
 function formatDuration(seconds) {
     if (!seconds && seconds !== 0) return null;
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    if (m === 0) return `${s}s`;
-    return `${m}m ${s}s`;
+    let s;
+    if (typeof seconds === 'string') {
+        const match = seconds.match(/^([\d.]+)s?$/);
+        if (!match) return null;
+        s = parseFloat(match[1]);
+    } else {
+        s = Number(seconds);
+    }
+    if (isNaN(s) || s < 0) return null;
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
-
 function formatStages(stages) {
     if (!stages || !stages.length) return null;
     return stages.join(' \u2192 ');

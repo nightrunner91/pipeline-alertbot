@@ -3,7 +3,7 @@ const { logInfo, logError } = require('../utils/logger');
 const { formatPipelineMessageWithKeyboard } = require('../services/gitlab');
 const { sendPipelineNotification } = require('../bot');
 const { findRepoConfig, validateWebhookSecret, shouldNotify, extractStageName, getDeployLink } = require('../utils/repo-config');
-const { detectStageTransitions, createPayloadForStage, clearOldStates } = require('../utils/pipeline-state');
+const { detectStageTransitions, createPayloadForStage, clearOldStates, trackJobDuration, getCumulativeDuration } = require('../utils/pipeline-state');
 const { normalizeJobPayload } = require('../utils/job-normalizer');
 
 const MAX_PAYLOAD_SIZE = '50kb';
@@ -107,6 +107,14 @@ function createServer(bot, config, repositories) {
                     return res.status(200).send('OK');
                 }
 
+                const pipelineId = payload.pipeline_id;
+                const stageName = payload.build_stage?.toLowerCase();
+                const duration = payload.build_duration;
+
+                if (duration && stageName && pipelineId && status !== 'running') {
+                    trackJobDuration(pipelineId, stageName, duration);
+                }
+
                 if (!shouldNotify(repoConfig, normalized)) {
                     logInfo('Notification skipped by notifyRules', {
                         project: repoConfig.projectName,
@@ -116,8 +124,13 @@ function createServer(bot, config, repositories) {
                     return res.status(200).send('OK');
                 }
 
-                const stageName = normalized.object_attributes.detailed_status.context;
-                const deployLink = getDeployLink(repoConfig, stageName);
+                const cumulativeDuration = getCumulativeDuration(pipelineId);
+                if (cumulativeDuration !== null) {
+                    normalized.object_attributes.duration = cumulativeDuration;
+                }
+
+                const stageNameForDeploy = normalized.object_attributes.detailed_status.context;
+                const deployLink = getDeployLink(repoConfig, stageNameForDeploy);
                 const { message, reply_markup } = formatPipelineMessageWithKeyboard(normalized, repoConfig.style, repoConfig.projectName, deployLink);
                 await sendPipelineNotification(bot, repoConfig.chatId, message, reply_markup);
 

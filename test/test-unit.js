@@ -1,5 +1,6 @@
 const { formatPipelineMessage, formatPipelineMessageWithKeyboard } = require('../src/services/gitlab');
 const { buildMessage, formatDuration, formatStages, extractStageName } = require('../src/services/message-builder');
+const { normalizeJobPayload } = require('../src/utils/job-normalizer');
 const fs = require('fs');
 const path = require('path');
 
@@ -41,7 +42,7 @@ function runUnitTests() {
             assertions: (msg) => {
                 assert(msg.includes('Passed [deploy]'), 'Should contain "Passed [deploy]"');
                 assert(msg.includes('\u2705'), 'Should contain success emoji');
-                assert(msg.includes('15m 30s'), 'Should contain formatted duration');
+                assert(msg.includes('15:30'), 'Should contain formatted duration');
                 assert(!msg.includes('Stages'), 'Should not contain stages line');
             },
         },
@@ -54,7 +55,7 @@ function runUnitTests() {
                 assert(msg.includes('\u274C'), 'Should contain failure emoji');
                 assert(msg.includes('feature/broken-thing'), 'Should contain feature branch');
                 assert(msg.includes('Jane Smith'), 'Should contain author name');
-                assert(msg.includes('5m 12s'), 'Should contain formatted duration');
+                assert(msg.includes('05:12'), 'Should contain formatted duration');
                 assert(!msg.includes('Stages'), 'Should not contain stages line');
             },
         },
@@ -76,7 +77,7 @@ function runUnitTests() {
                 assert(msg.includes('Passed [deploy]'), 'Should contain "Passed [deploy]"');
                 assert(msg.includes('\u251C\u2500'), 'Should contain tree connector');
                 assert(msg.includes('\u2514\u2500'), 'Should contain last tree connector');
-                assert(msg.includes('15m 30s'), 'Should contain formatted duration');
+                assert(msg.includes('15:30'), 'Should contain formatted duration');
                 assert(!msg.includes('Stages'), 'Should not contain stages line');
             },
         },
@@ -98,7 +99,7 @@ function runUnitTests() {
                 assert(msg.includes('Passed [deploy]'), 'Should contain "Passed [deploy]"');
                 assert(msg.includes('main'), 'Should contain branch');
                 assert(msg.includes('John Doe'), 'Should contain author');
-                assert(msg.includes('15m 30s'), 'Should contain duration');
+                assert(msg.includes('15:30'), 'Should contain duration');
                 assert(!msg.includes('Stages'), 'Should not contain stages line');
             },
         },
@@ -146,12 +147,14 @@ function runUnitTests() {
             style: null,
             isUtility: true,
             assertions: () => {
-                assert(formatDuration(312) === '5m 12s', '312s should be 5m 12s');
-                assert(formatDuration(930) === '15m 30s', '930s should be 15m 30s');
-                assert(formatDuration(45) === '45s', '45s should be 45s');
-                assert(formatDuration(0) === '0s', '0s should be 0s');
+                assert(formatDuration(312) === '05:12', '312s should be 05:12');
+                assert(formatDuration(930) === '15:30', '930s should be 15:30');
+                assert(formatDuration(45) === '00:45', '45s should be 00:45');
+                assert(formatDuration(0) === '00:00', '0s should be 00:00');
                 assert(formatDuration(null) === null, 'null should return null');
                 assert(formatDuration(undefined) === null, 'undefined should return null');
+                assert(formatDuration('56.441014s') === '00:56', 'string duration should be parsed');
+                assert(formatDuration('1m 30s') === null, 'invalid string should return null');
             },
         },
         {
@@ -238,6 +241,62 @@ function runUnitTests() {
             },
             projectNameOverride: 'Custom Project Name',
         },
+        {
+            name: 'Card style: Format running job message',
+            fixture: 'job-running.json',
+            style: 'card',
+            assertions: (msg) => {
+                assert(msg.includes('Running [build]'), 'Should contain "Running [build]"');
+                assert(msg.includes('my-awesome-project'), 'Should contain project name');
+                assert(msg.includes('main'), 'Should contain branch name');
+                assert(msg.includes('John Doe'), 'Should contain author name');
+                assert(!msg.includes('Duration'), 'Should not contain duration for running');
+            },
+        },
+        {
+            name: 'Card style: Format success job message',
+            fixture: 'job-success.json',
+            style: 'card',
+            assertions: (msg) => {
+                assert(msg.includes('Passed [deploy]'), 'Should contain "Passed [deploy]"');
+                assert(msg.includes('\u2705'), 'Should contain success emoji');
+                assert(msg.includes('04:05'), 'Should contain formatted duration');
+            },
+        },
+        {
+            name: 'Card style: Format failed job message',
+            fixture: 'job-failed.json',
+            style: 'card',
+            assertions: (msg) => {
+                assert(msg.includes('Failed [test]'), 'Should contain "Failed [test]"');
+                assert(msg.includes('\u274C'), 'Should contain failure emoji');
+                assert(msg.includes('03:07'), 'Should contain formatted duration');
+            },
+        },
+        {
+            name: 'Job inline keyboard shows "Job" button',
+            fixture: 'job-running.json',
+            style: 'card',
+            assertions: (msg, reply_markup) => {
+                assert(reply_markup, 'Should have reply_markup');
+                assert(reply_markup.inline_keyboard, 'Should have inline_keyboard');
+                assert(reply_markup.inline_keyboard[0][0].text === 'Job', 'First button should be "Job" for job webhooks');
+                assert(reply_markup.inline_keyboard[0][0].url.includes('/-/jobs/'), 'Job URL should contain /-/jobs/');
+            },
+            withKeyboard: true,
+        },
+        {
+            name: 'Pipeline inline keyboard shows "Pipeline" button',
+            fixture: 'pipeline-running.json',
+            style: 'card',
+            assertions: (msg, reply_markup) => {
+                assert(reply_markup, 'Should have reply_markup');
+                assert(reply_markup.inline_keyboard, 'Should have inline_keyboard');
+                assert(reply_markup.inline_keyboard[0][0].text === 'Pipeline', 'First button should be "Pipeline" for pipeline webhooks');
+                assert(reply_markup.inline_keyboard[0][0].url.includes('/-/pipelines/'), 'Pipeline URL should contain /-/pipelines/');
+            },
+            withKeyboard: true,
+        },
     ];
 
     for (const test of tests) {
@@ -252,7 +311,11 @@ function runUnitTests() {
             }
 
             const fixturePath = path.join(FIXTURES_DIR, test.fixture);
-            const payload = JSON.parse(fs.readFileSync(fixturePath, 'utf-8'));
+            let payload = JSON.parse(fs.readFileSync(fixturePath, 'utf-8'));
+
+            if (payload.object_kind === 'build') {
+                payload = normalizeJobPayload(payload);
+            }
 
             if (test.withKeyboard) {
                 const { message, reply_markup } = formatPipelineMessageWithKeyboard(payload, test.style, test.projectNameOverride, test.deployLink);

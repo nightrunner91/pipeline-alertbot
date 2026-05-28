@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-1.1.0-blue?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.2.0-blue?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/License-ISC-green?style=for-the-badge" alt="License">
   <img src="https://img.shields.io/badge/Node.js-%3E%3D18-6da55f?style=for-the-badge&logo=node.js" alt="Node Version">
   <img src="https://img.shields.io/badge/Express-5.2.1-000000?style=for-the-badge&logo=express" alt="Express">
@@ -51,7 +51,8 @@
 ## Features
 
 - **Multi-repository support** - Monitor many GitLab projects and route alerts to different Telegram chats
-- **Stage-aware notifications** - Per-stage alerts with stage name headers, transition tracking, and configurable filtering via `notifyRules`
+- **Stage-aware notifications** - Per-job alerts with stage name headers and configurable filtering via `notifyRules`
+- **Job-level webhooks** - Receives individual job events from GitLab for real-time per-stage notifications without state tracking
 - **Customizable alerts** - Per-repo display names, three message styles (card, tree, minimal), and custom deploy link buttons
 - **Inline keyboard** - Quick-access buttons for pipeline, commit, and repository links in every notification
 - **Secure & production-ready** - Timing-safe webhook validation, rate limiting, security headers, payload size limits, structured logging with sensitive data sanitization
@@ -84,7 +85,7 @@ pipebot/
 │   └── utils/
 │       ├── logger.js         # Structured JSON logging (INFO/ERROR) with sensitive data sanitization
 │       ├── repo-config.js    # Multi-repository config parser, routing, and notification filtering
-│       └── pipeline-state.js # Stage transition detection and pipeline state tracking
+│       └── pipeline-state.js # Stage transition detection (legacy pipeline webhook support)
 ├── config/
 │   └── repos.config.js       # Readable repository configuration (not committed)
 ├── scripts/
@@ -94,7 +95,11 @@ pipebot/
 │   │   ├── pipeline-running.json
 │   │   ├── pipeline-success.json
 │   │   ├── pipeline-failed.json
-│   │   └── pipeline-canceled.json
+│   │   ├── pipeline-canceled.json
+│   │   ├── job-running.json
+│   │   ├── job-success.json
+│   │   ├── job-failed.json
+│   │   └── job-canceled.json
 │   ├── test-unit.js          # Unit tests for message formatting
 │   ├── test-repo-config.js   # Multi-repository config tests
 │   ├── test-pipeline-state.js # Pipeline state tracking tests
@@ -162,6 +167,7 @@ Create a `.env` file in the project root with the following variables:
 | `REPOSITORY_CONFIG` | Yes | -- | JSON array mapping GitLab projects to Telegram chats (see below) |
 | `ALERT_STYLE` | No | `card` | Global fallback message format: `card`, `tree`, or `minimal` |
 | `PORT` | No | `3000` | Primary port for the webhook server |
+| `WEBHOOK_MODE` | No | `both` | Event type to process: `both`, `jobs` (job events only), or `pipeline` (pipeline events only) |
 
 > [!IMPORTANT]
 > Never commit your `.env` file. It is listed in `.gitignore` and should only exist locally or in your deployment platform's secret store.
@@ -308,14 +314,18 @@ Configure a webhook **for each repository** you want to monitor:
    ```
 
 3. Set the **Secret token** to the `secret` value from the corresponding entry in `REPOSITORY_CONFIG`.
-4. Under **Trigger**, check **Pipeline events**.
+4. Under **Trigger**, check **Job events** (recommended) or **Pipeline events** (legacy support).
 5. Keep **Enable SSL verification** enabled for production deployments.
-6. Click **Add webhook** and test using the **Test > Pipeline events** dropdown.
+6. Click **Add webhook** and test using **Test > Job events** (or **Pipeline events** if using legacy mode).
 
 > [!NOTE]
 > All repositories use the same webhook endpoint. The bot routes alerts to the correct Telegram chat based on the `projectId` in the incoming payload.
 >
-> The bot only processes pipeline events with statuses: `running`, `success`, `failed`, and `canceled`. Other events are acknowledged but ignored.
+> **Job events** (recommended): Each job status change triggers a separate webhook. Notifications are sent per-job with the stage name in the header. No state tracking needed.
+>
+> **Pipeline events** (legacy): The bot still supports pipeline webhooks for backward compatibility. Stage transitions are detected from the `builds[]` array.
+>
+> The bot processes events with statuses: `running`, `success`, `failed`, and `canceled`. Other events are acknowledged but ignored.
 
 ### Deployment
 
@@ -358,7 +368,7 @@ Expected output:
 
 - **URL**: `POST /api/webhook/gitlab`
 - **Headers**: `X-Gitlab-Token: <repo-secret>`
-- **Body**: GitLab pipeline event payload (JSON, max 50kb)
+- **Body**: GitLab job event or pipeline event payload (JSON, max 50kb)
 - **Response**: `200 OK` on success, `400 Bad Request` if payload is invalid JSON, `401 Unauthorized` if the secret does not match, `404` if no repository config matches the project, `413 Payload Too Large` if payload exceeds 50kb, `429 Too Many Requests` if rate limit exceeded, `500 Internal Server Error` on processing error, `503 Service Unavailable` if bot is not initialized
 
 ### Diagnostics Endpoint
@@ -391,7 +401,7 @@ This executes five test suites in sequence:
 | `npm run test:webhooks` | Webhook integration tests with sample payloads |
 | `npm run test:security` | Security validation tests (token verification, input sanitization) |
 
-Tests use fixture files in `test/fixtures/` that simulate real GitLab pipeline event payloads.
+Tests use fixture files in `test/fixtures/` that simulate real GitLab job and pipeline event payloads.
 
 ## Development
 

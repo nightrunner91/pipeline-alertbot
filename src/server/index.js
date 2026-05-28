@@ -3,7 +3,8 @@ const { logInfo, logError } = require('../utils/logger');
 const { formatPipelineMessageWithKeyboard } = require('../services/gitlab');
 const { sendPipelineNotification } = require('../bot');
 const { findRepoConfig, validateWebhookSecret, shouldNotify, extractStageName, getDeployLink } = require('../utils/repo-config');
-const { detectStageTransitions, createPayloadForStage, clearOldStates } = require('../utils/pipeline-state');
+const { detectStageTransitions, createPayloadForStage, clearOldStates, trackJobDuration, getCumulativeDuration } = require('../utils/pipeline-state');
+const { normalizeJobPayload } = require('../utils/job-normalizer');
 
 const MAX_PAYLOAD_SIZE = '50kb';
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
@@ -46,6 +47,7 @@ function addSecurityHeaders(req, res, next) {
 function createServer(bot, config, repositories) {
     const app = express();
     const rateLimiter = createRateLimiter();
+    const webhookMode = (process.env.WEBHOOK_MODE || 'both').toLowerCase();
 
     app.use(addSecurityHeaders);
     app.use(express.json({ limit: MAX_PAYLOAD_SIZE }));
@@ -94,8 +96,61 @@ function createServer(bot, config, repositories) {
                 project: payload.project?.path_with_namespace,
             });
 
-            if (payload.object_kind !== 'pipeline') {
-                logInfo('Ignored: not a pipeline event');
+            const objectKind = payload.object_kind;
+
+            if (objectKind === 'build') {
+                const normalized = normalizeJobPayload(payload);
+                const status = normalized.object_attributes.status;
+
+                if (!['running', 'success', 'failed', 'canceled'].includes(status)) {
+                    logInfo('Ignored: job status not processed', { status });
+                    return res.status(200).send('OK');
+                }
+
+                const pipelineId = payload.pipeline_id;
+                const stageName = payload.build_stage?.toLowerCase();
+                const duration = payload.build_duration;
+
+                if (duration && stageName && pipelineId && status !== 'running') {
+                    trackJobDuration(pipelineId, stageName, duration);
+                }
+
+                if (!shouldNotify(repoConfig, normalized)) {
+                    logInfo('Notification skipped by notifyRules', {
+                        project: repoConfig.projectName,
+                        stage: normalized.object_attributes.detailed_status.context,
+                        status,
+                    });
+                    return res.status(200).send('OK');
+                }
+
+                const cumulativeDuration = getCumulativeDuration(pipelineId);
+                if (cumulativeDuration !== null) {
+                    normalized.object_attributes.duration = cumulativeDuration;
+                }
+
+                const stageNameForDeploy = normalized.object_attributes.detailed_status.context;
+                const deployLink = getDeployLink(repoConfig, stageNameForDeploy);
+                const { message, reply_markup } = formatPipelineMessageWithKeyboard(normalized, repoConfig.style, repoConfig.projectName, deployLink);
+                await sendPipelineNotification(bot, repoConfig.chatId, message, reply_markup);
+
+                logInfo('Job notification sent', {
+                    project: repoConfig.projectName,
+                    stage: stageName,
+                    status,
+                    jobId: payload.build_id,
+                });
+
+                return res.status(200).send('OK');
+            }
+
+            if (objectKind !== 'pipeline') {
+                logInfo('Ignored: unsupported event type', { objectKind });
+                return res.status(200).send('OK');
+            }
+
+            if (webhookMode === 'jobs') {
+                logInfo('Ignored: pipeline events disabled, jobs-only mode');
                 return res.status(200).send('OK');
             }
 

@@ -35,6 +35,26 @@ const tests = [
         file: 'push-event.json',
         expectAlert: false,
     },
+    {
+        name: 'Job Running',
+        file: 'job-running.json',
+        expectAlert: true,
+    },
+    {
+        name: 'Job Success',
+        file: 'job-success.json',
+        expectAlert: true,
+    },
+    {
+        name: 'Job Failed',
+        file: 'job-failed.json',
+        expectAlert: true,
+    },
+    {
+        name: 'Job Canceled',
+        file: 'job-canceled.json',
+        expectAlert: true,
+    },
 ];
 
 function sendWebhook(testCase) {

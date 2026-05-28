@@ -177,9 +177,6 @@ function buildInlineKeyboard(data, deployLink) {
         row1.push({ text: 'Commit', url: data.commitUrl });
     }
     if (row1.length) buttons.push(row1);
-    if (data.repoUrl) {
-        buttons.push([{ text: 'View repository', url: data.repoUrl }]);
-    }
     if (deployLink && deployLink.url) {
         buttons.push([{ text: deployLink.name || 'View', url: deployLink.url }]);
     }

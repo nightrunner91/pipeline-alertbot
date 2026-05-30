@@ -119,12 +119,10 @@ function runUnitTests() {
             assertions: (msg, reply_markup) => {
                 assert(reply_markup, 'Should have reply_markup');
                 assert(reply_markup.inline_keyboard, 'Should have inline_keyboard');
-                assert(reply_markup.inline_keyboard.length === 2, 'Should have two rows');
+                assert(reply_markup.inline_keyboard.length === 1, 'Should have one row');
                 assert(reply_markup.inline_keyboard[0].length >= 1, 'Should have at least one button in first row');
                 assert(reply_markup.inline_keyboard[0][0].text === 'Pipeline', 'First button should be "Pipeline"');
                 assert(reply_markup.inline_keyboard[0][1].text === 'Commit', 'Second button should be "Commit"');
-                assert(reply_markup.inline_keyboard[1].length === 1, 'Second row should have one button');
-                assert(reply_markup.inline_keyboard[1][0].text === 'View repository', 'Third button should be "View repository"');
             },
             withKeyboard: true,
         },
@@ -135,10 +133,10 @@ function runUnitTests() {
             assertions: (msg, reply_markup) => {
                 assert(reply_markup, 'Should have reply_markup');
                 assert(reply_markup.inline_keyboard, 'Should have inline_keyboard');
-                assert(reply_markup.inline_keyboard.length === 3, 'Should have three rows with deployLink');
-                assert(reply_markup.inline_keyboard[2].length === 1, 'Third row should have one button');
-                assert(reply_markup.inline_keyboard[2][0].text === 'Open Site', 'Deploy button should show custom name');
-                assert(reply_markup.inline_keyboard[2][0].url === 'https://example.com/deploy', 'Deploy button should have correct URL');
+                assert(reply_markup.inline_keyboard.length === 2, 'Should have two rows with deployLink');
+                assert(reply_markup.inline_keyboard[1].length === 1, 'Second row should have one button');
+                assert(reply_markup.inline_keyboard[1][0].text === 'Open Site', 'Deploy button should show custom name');
+                assert(reply_markup.inline_keyboard[1][0].url === 'https://example.com/deploy', 'Deploy button should have correct URL');
             },
             withKeyboard: true,
             deployLink: { url: 'https://example.com/deploy', name: 'Open Site' },

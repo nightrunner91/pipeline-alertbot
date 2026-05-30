@@ -12,9 +12,7 @@ function normalizeJobPayload(raw) {
     const commitData = raw.commit || {};
     const commitSha = commitData.sha || raw.sha || '';
     const commitAuthor = commitData.author_name || commitData.author?.name || raw.user?.name || 'Unknown';
-    const commitUrl = commitData.author_url
-        ? `${commitData.author_url}/-/commit/${commitSha}`
-        : (webUrl ? `${webUrl}/-/commit/${commitSha}` : '');
+    const commitUrl = webUrl ? `${webUrl}/-/commit/${commitSha}` : '';
 
     return {
         object_kind: 'pipeline',

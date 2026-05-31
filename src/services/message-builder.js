@@ -181,7 +181,11 @@ function buildInlineKeyboard(data, deployLink) {
   const row1 = [];
   if (data.pipelineUrl) {
     const linkLabel = data.pipelineUrl.includes('/-/jobs/') ? 'Job' : 'Pipeline';
-    row1.push({ text: linkLabel, url: data.pipelineUrl });
+    const btn = { text: linkLabel, url: data.pipelineUrl };
+    if (data.status === 'failed' && linkLabel === 'Job') {
+      btn.style = 'danger';
+    }
+    row1.push(btn);
   }
   if (data.commitUrl) {
     row1.push({ text: 'Commit', url: data.commitUrl });

@@ -274,6 +274,18 @@ function runUnitTests() {
             },
         },
         {
+            name: 'Job inline keyboard shows "danger" style when failed',
+            fixture: 'job-failed.json',
+            style: 'card',
+            assertions: (msg, reply_markup) => {
+                assert(reply_markup, 'Should have reply_markup');
+                assert(reply_markup.inline_keyboard, 'Should have inline_keyboard');
+                assert(reply_markup.inline_keyboard[0][0].text === 'Job', 'First button should be "Job" for job webhooks');
+                assert(reply_markup.inline_keyboard[0][0].style === 'danger', 'Job button should have danger style when failed');
+            },
+            withKeyboard: true,
+        },
+        {
             name: 'Job inline keyboard shows "Job" button',
             fixture: 'job-running.json',
             style: 'card',

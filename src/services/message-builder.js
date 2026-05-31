@@ -187,7 +187,7 @@ function buildInlineKeyboard(data, deployLink) {
     }
     if (row1.length) buttons.push(row1);
     if (deployLink && deployLink.url) {
-        buttons.push([{ text: deployLink.name || 'View', url: deployLink.url }]);
+        buttons.push([{ text: deployLink.name || 'View', url: deployLink.url, style: 'success' }]);
     }
     return buttons.length ? { inline_keyboard: buttons } : undefined;
 }

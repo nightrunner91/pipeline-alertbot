@@ -130,7 +130,8 @@ function createServer(bot, config, repositories) {
                 }
 
                 const stageNameForDeploy = normalized.object_attributes.detailed_status.context;
-                const deployLink = getDeployLink(repoConfig, stageNameForDeploy);
+                const branchForDeploy = normalized.object_attributes.ref;
+                const deployLink = getDeployLink(repoConfig, stageNameForDeploy, branchForDeploy);
                 const { message, reply_markup } = formatPipelineMessageWithKeyboard(normalized, repoConfig.style, repoConfig.projectName, deployLink);
                 await sendPipelineNotification(bot, repoConfig.chatId, message, reply_markup);
 
@@ -193,7 +194,8 @@ function createServer(bot, config, repositories) {
                         }
 
                         const stageName = transition.stageName;
-                        const deployLink = getDeployLink(repoConfig, stageName);
+                        const branchForDeploy = payload.object_attributes?.ref;
+                        const deployLink = getDeployLink(repoConfig, stageName, branchForDeploy);
                         const { message, reply_markup } = formatPipelineMessageWithKeyboard(stagePayload, repoConfig.style, repoConfig.projectName, deployLink);
                         await sendPipelineNotification(bot, repoConfig.chatId, message, reply_markup);
                     }
@@ -208,7 +210,8 @@ function createServer(bot, config, repositories) {
                     }
 
                     const stageName = extractStageName(payload);
-                    const deployLink = getDeployLink(repoConfig, stageName);
+                    const branchForDeploy = payload.object_attributes?.ref;
+                    const deployLink = getDeployLink(repoConfig, stageName, branchForDeploy);
                     const { message, reply_markup } = formatPipelineMessageWithKeyboard(payload, repoConfig.style, repoConfig.projectName, deployLink);
                     await sendPipelineNotification(bot, repoConfig.chatId, message, reply_markup);
                 }

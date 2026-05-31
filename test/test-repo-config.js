@@ -395,6 +395,51 @@ function runTests() {
                 assert(link === null, 'Should return null when no deployLinks');
             },
         },
+        {
+            name: 'getDeployLink returns link for matching branch (array format)',
+            run: () => {
+                const repoConfig = {
+                    deployLinks: {
+                        deploy: [
+                            { branch: 'main',    url: 'https://prod.example.com', name: 'Production' },
+                            { branch: 'develop', url: 'https://dev.example.com',  name: 'Development' },
+                        ]
+                    }
+                };
+                const link = getDeployLink(repoConfig, 'deploy', 'develop');
+                assert(link !== null, 'Should return link for matching branch');
+                assert(link.url === 'https://dev.example.com', 'Should return correct branch URL');
+                assert(link.name === 'Development', 'Should return correct branch name');
+            },
+        },
+        {
+            name: 'getDeployLink returns null for non-matching branch (array format)',
+            run: () => {
+                const repoConfig = {
+                    deployLinks: {
+                        deploy: [
+                            { branch: 'main', url: 'https://prod.example.com', name: 'Production' },
+                        ]
+                    }
+                };
+                const link = getDeployLink(repoConfig, 'deploy', 'feature/foo');
+                assert(link === null, 'Should return null when no branch matches');
+            },
+        },
+        {
+            name: 'getDeployLink returns null when no branch provided for array format',
+            run: () => {
+                const repoConfig = {
+                    deployLinks: {
+                        deploy: [
+                            { branch: 'main', url: 'https://prod.example.com', name: 'Production' },
+                        ]
+                    }
+                };
+                const link = getDeployLink(repoConfig, 'deploy');
+                assert(link === null, 'Should return null when branch is not provided');
+            },
+        },
     ];
 
     for (const test of tests) {

@@ -181,15 +181,32 @@ function shouldNotify(repoConfig, payload) {
     return true;
 }
 
-function getDeployLink(repoConfig, stageName) {
+function getDeployLink(repoConfig, stageName, branch) {
     const deployLinks = repoConfig?.deployLinks;
     if (!deployLinks || !stageName) {
         return null;
     }
-    const link = deployLinks[stageName];
-    if (link && link.url) {
-        return link;
+
+    const stageLinks = deployLinks[stageName];
+    if (!stageLinks) {
+        return null;
     }
+
+    // New format: array of rules with branch matching
+    if (Array.isArray(stageLinks)) {
+        if (!branch) return null;
+        const matched = stageLinks.find((rule) => rule.branch === branch);
+        if (matched && matched.url) {
+            return { url: matched.url, name: matched.name || 'View' };
+        }
+        return null;
+    }
+
+    // Old format: single { url, name } — backward compatible, any branch
+    if (stageLinks.url) {
+        return stageLinks;
+    }
+
     return null;
 }
 

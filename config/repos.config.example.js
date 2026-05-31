@@ -12,9 +12,10 @@ module.exports = {
         test:   { send: ["failed"], ignore: [] }
       },
       deployLinks: {
-        build:  { url: "", name: "" },
-        deploy: { url: "https://test-project.example.com", name: "Open Site" },
-        test:   { url: "", name: "" }
+        deploy: [
+          { branch: "main",    url: "https://production.example.com", name: "Production" },
+          { branch: "develop", url: "https://staging.example.com",    name: "Staging" }
+        ]
       }
     }
   ]

@@ -242,7 +242,9 @@ The `notifyRules` field lets you control which pipeline statuses trigger notific
 
 ### Deploy Links
 
-The `deployLinks` field adds a custom full-width button at the bottom of the notification keyboard. Each stage can have its own link with a custom name:
+The `deployLinks` field adds a custom full-width button at the bottom of the notification keyboard. You can configure per-stage links, optionally filtered by branch.
+
+**Branch-aware format (recommended):** Provide an array of rules, each with a `branch`, `url`, and `name`. The first matching branch wins:
 
 ```json
 {
@@ -250,16 +252,28 @@ The `deployLinks` field adds a custom full-width button at the bottom of the not
   "projectName": "My API",
   "chatId": "-1001234567890",
   "deployLinks": {
-    "build":  { "url": "", "name": "" },
-    "deploy": { "url": "https://my-api.example.com", "name": "Open Site" },
-    "test":   { "url": "https://my-api.example.com/swagger", "name": "View Swagger" }
+    "deploy": [
+      { "branch": "main",    "url": "https://my-api.example.com",        "name": "Production" },
+      { "branch": "develop", "url": "https://dev.my-api.example.com",   "name": "Development" },
+      { "branch": "staging", "url": "https://staging.my-api.example.com", "name": "Staging" }
+    ]
   }
 }
 ```
 
-- Each stage can have its own link with `url` and `name`.
-- Links are optional -- if a stage has no `url`, no button is shown for it.
-- The button appears on its own row at the very bottom, after the Pipeline/Commit/View repository buttons.
+**Simple format (backward compatible):** A single `{ url, name }` object — shown for any branch:
+
+```json
+{
+  "deployLinks": {
+    "deploy": { "url": "https://my-api.example.com", "name": "Open Site" }
+  }
+}
+```
+
+- Staged without a deploy link entry (e.g. `build`, `test`) never get a button.
+- In the **array format**, if no rule's `branch` matches the pipeline branch, no button is shown.
+- The button appears on its own row at the very bottom, after the Pipeline/Commit buttons.
 - If `deployLinks` is not configured for the repo or the current stage, behavior is unchanged.
 
 ### Alert Styles

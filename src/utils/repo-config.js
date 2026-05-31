@@ -196,15 +196,18 @@ function getDeployLink(repoConfig, stageName, branch) {
     if (Array.isArray(stageLinks)) {
         if (!branch) return null;
         const matched = stageLinks.find((rule) => rule.branch === branch);
-        if (matched && matched.url) {
-            return { url: matched.url, name: matched.name || 'View' };
+        if (matched) {
+            const url = matched.url?.trim();
+            if (url) {
+                return { url, name: matched.name?.trim() || 'View' };
+            }
         }
         return null;
     }
 
     // Old format: single { url, name } — backward compatible, any branch
     if (stageLinks.url) {
-        return stageLinks;
+        return { url: stageLinks.url.trim(), name: stageLinks.name };
     }
 
     return null;
